@@ -34,15 +34,36 @@ The relationships are:
 - `bookings.trip_id` references `trips.trip_id`.
 - `booking_id`, `user_id`, `trip_id`, and `hotel_id` are the identifiers for their respective records.
 
-## Setup status
+## Development setup
 
-This is a structure-only scaffold. No application code or dependency manifests have been created, and no dependencies have been installed.
+The development environments are kept separate. Python dependencies belong only in `backend/.venv`, and frontend dependencies belong only in `frontend/node_modules`.
 
-To begin working with the scaffold:
+### Backend
 
-1. Open a terminal in the existing `expedia` directory.
-2. Use `backend/` for future Python and FastAPI code.
-3. Use `frontend/` for future Vue code.
-4. Treat `backend/data/*.csv` as read-only instructor data.
+Python 3.10 or newer is required. From the project root on Windows PowerShell:
 
-Backend and frontend installation and run commands should be documented here after their dependency manifests and application entry points are created.
+```powershell
+python -m venv backend/.venv
+backend/.venv/Scripts/python.exe -m pip install -r backend/requirements.txt
+```
+
+Use `backend/.venv/Scripts/python.exe` for backend commands so packages are never installed globally.
+
+### Frontend
+
+The frontend uses Vue with Vite and ESLint. From the project root:
+
+```powershell
+Set-Location frontend
+npm install
+npm run dev
+```
+
+Quality checks:
+
+```powershell
+npm run lint
+npm run build
+```
+
+Application-specific backend and frontend run commands will be added after their entry points are implemented. Treat `backend/data/*.csv` as read-only instructor data throughout development.
