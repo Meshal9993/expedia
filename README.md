@@ -49,6 +49,14 @@ backend/.venv/Scripts/python.exe -m pip install -r backend/requirements.txt
 
 Use `backend/.venv/Scripts/python.exe` for backend commands so packages are never installed globally.
 
+Start the API from the project root:
+
+```powershell
+backend/.venv/Scripts/python.exe -m uvicorn backend.main:app --reload
+```
+
+Hotel search is available at `GET /api/hotels?name=<hotel-name>`.
+
 ### Frontend
 
 The frontend uses Vue with Vite and ESLint. From the project root:
@@ -66,4 +74,4 @@ npm run lint
 npm run build
 ```
 
-Application-specific backend and frontend run commands will be added after their entry points are implemented. Treat `backend/data/*.csv` as read-only instructor data throughout development.
+The frontend sends hotel-name searches to the FastAPI service. Treat `backend/data/*.csv` as read-only instructor data throughout development.
