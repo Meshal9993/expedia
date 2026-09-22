@@ -1,14 +1,16 @@
 # Expedia Project
 
-This repository is the starting structure for an Expedia-style travel application. It keeps the future FastAPI backend and Vue frontend separate while preserving the instructor-supplied CSV data as read-only source data.
+This repository is an Expedia-style travel application. It keeps the FastAPI backend and Vue frontend separate while preserving the instructor-supplied CSV data as read-only source data.
 
 ## Project layout
 
 ```text
 expedia/
-|-- backend/             # Future Python and FastAPI work
-|   `-- data/            # Instructor-supplied CSV files
-|-- frontend/            # Future Vue work
+|-- backend/             # FastAPI routes, models, controllers, and CSV data
+|   |-- controllers/     # SQLite CRUD, booking rules, and hotel-search logic
+|   |-- models/          # Hotel, trip, user, and booking entities
+|   `-- data/            # Instructor-supplied CSV files (read-only)
+|-- frontend/            # Vue View and CSS
 |-- docs/                # Project documentation
 |-- prompts/             # Saved project prompts
 |-- handoffs/            # Team handoff notes
@@ -34,6 +36,17 @@ The relationships are:
 - `bookings.trip_id` references `trips.trip_id`.
 - `booking_id`, `user_id`, `trip_id`, and `hotel_id` are the identifiers for their respective records.
 
+## Current Part 2 behavior
+
+- Hotel-name search returns matching hotels and available stays from SQLite.
+- A user can select a stay and create a confirmed booking for one of the six supplied demo travelers.
+- Booking History displays traveler, hotel, stay, dates, and status, with an optional traveler filter.
+- Cancelling changes a booking's status to `cancelled` and retains the record.
+- Deleting is a separate, confirmed action intended for temporary test bookings.
+- SQLite changes persist across backend and frontend restarts. The instructor CSV files remain unchanged and are used only for first-time database seeding.
+
+The project follows MVC boundaries: immutable entities in `backend/models/` define the Model, Vue and CSS in `frontend/` provide the View, and controllers in `backend/controllers/` own persistence and business rules. FastAPI routes are thin HTTP adapters between the View and controllers. The exact contracts are documented in `docs/mvc-contracts.md`.
+
 ## Development setup
 
 The development environments are kept separate. Python dependencies belong only in `backend/.venv`, and frontend dependencies belong only in `frontend/node_modules`.
@@ -55,7 +68,17 @@ Start the API from the project root:
 backend/.venv/Scripts/python.exe -m uvicorn backend.main:app --reload
 ```
 
-Hotel search is available at `GET /api/hotels?name=<hotel-name>`.
+The API is then available at `http://127.0.0.1:8000`.
+
+Hotel search is available at `GET /api/hotels?name=<hotel-name>`. Booking endpoints are available at `POST /api/bookings`, `GET /api/bookings`, `GET /api/bookings/{booking_id}`, `PATCH /api/bookings/{booking_id}`, and `DELETE /api/bookings/{booking_id}`. See `docs/mvc-contracts.md` for their JSON contracts.
+
+On first use, the backend creates the ignored local database `backend/expedia.sqlite3` and imports the four read-only CSV files. Later CRUD changes persist in SQLite and do not alter the CSVs. Delete the local database only if you intentionally want to recreate it from the CSVs; this loses local database changes.
+
+Backend checks:
+
+```powershell
+backend/.venv/Scripts/python.exe -m pytest backend/tests
+```
 
 ### Frontend
 
@@ -67,6 +90,8 @@ npm install
 npm run dev
 ```
 
+Vite displays the local URL when it starts; with the default configuration, open `http://127.0.0.1:5173/`.
+
 Quality checks:
 
 ```powershell
@@ -74,4 +99,4 @@ npm run lint
 npm run build
 ```
 
-The frontend sends hotel-name searches to the FastAPI service. Treat `backend/data/*.csv` as read-only instructor data throughout development.
+The frontend sends hotel-name searches to the FastAPI service. See `docs/mvc-contracts.md` for MVC responsibilities, model relationships, and HTTP contracts. Treat `backend/data/*.csv` as read-only instructor data throughout development.

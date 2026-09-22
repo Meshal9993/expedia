@@ -1,57 +1,105 @@
-import csv
+"""HTTP boundary between the Vue view and backend controllers."""
+
+from functools import lru_cache
 from pathlib import Path
 
-from fastapi import FastAPI, Query
+from fastapi import Depends, FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+from backend.controllers.booking import (
+    BookingController,
+    BookingNotFoundError,
+    BookingReferenceError,
+)
+from backend.controllers.database import DatabaseController
+from backend.controllers.search import SearchController
+from backend.models.api import BookingCreateRequest, BookingUpdateRequest
 
 
-DATA_DIRECTORY = Path(__file__).parent / "data"
+DATABASE_PATH = Path(__file__).parent / "expedia.sqlite3"
 
-app = FastAPI(title="Expedia Hotel Search API")
+app = FastAPI(title="Expedia API")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["*"],
 )
 
 
-def read_csv(filename: str) -> list[dict[str, str]]:
-    with (DATA_DIRECTORY / filename).open(encoding="utf-8-sig", newline="") as csv_file:
-        return list(csv.DictReader(csv_file))
+@lru_cache
+def get_database() -> DatabaseController:
+    database = DatabaseController(DATABASE_PATH)
+    database.initialize()
+    return database
+
+
+def get_booking_controller(
+    database: DatabaseController = Depends(get_database),
+) -> BookingController:
+    return BookingController(database)
+
+
+@app.exception_handler(BookingNotFoundError)
+def booking_not_found_handler(_, error: BookingNotFoundError) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(error)})
+
+
+@app.exception_handler(BookingReferenceError)
+def booking_reference_handler(_, error: BookingReferenceError) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(error)})
 
 
 @app.get("/api/hotels")
-def search_hotels(name: str = Query(default="")) -> dict[str, object]:
-    normalized_name = name.strip().casefold()
-    if not normalized_name:
-        return {"results": []}
+def search_hotels(
+    name: str = Query(default=""),
+    database: DatabaseController = Depends(get_database),
+) -> dict[str, object]:
+    return SearchController(database).search_hotels(name)
 
-    hotels = {
-        hotel["hotel_id"]: hotel
-        for hotel in read_csv("hotels.csv")
-        if normalized_name in hotel["hotel_name"].casefold()
-    }
 
-    results = []
-    for trip in read_csv("trips.csv"):
-        hotel = hotels.get(trip["hotel_id"])
-        if hotel is None:
-            continue
+@app.post("/api/bookings", status_code=201)
+def create_booking(
+    request: BookingCreateRequest,
+    controller: BookingController = Depends(get_booking_controller),
+) -> dict[str, object]:
+    return controller.create_booking(
+        request.user_id,
+        request.trip_id,
+        request.booked_on,
+    )
 
-        results.append(
-            {
-                "hotel_id": hotel["hotel_id"],
-                "hotel_name": hotel["hotel_name"],
-                "city": hotel["city"],
-                "state": hotel["state"],
-                "nightly_rate_usd": float(hotel["nightly_rate_usd"]),
-                "trip_id": trip["trip_id"],
-                "trip_name": trip["trip_name"],
-                "check_in": trip["check_in"],
-                "check_out": trip["check_out"],
-            }
-        )
 
-    return {"results": results}
+@app.get("/api/bookings")
+def get_booking_history(
+    user_id: str | None = Query(default=None),
+    controller: BookingController = Depends(get_booking_controller),
+) -> dict[str, object]:
+    return {"bookings": controller.get_history(user_id)}
+
+
+@app.get("/api/bookings/{booking_id}")
+def get_booking(
+    booking_id: str,
+    controller: BookingController = Depends(get_booking_controller),
+) -> dict[str, object]:
+    return controller.get_booking(booking_id)
+
+
+@app.patch("/api/bookings/{booking_id}")
+def update_booking(
+    booking_id: str,
+    _: BookingUpdateRequest,
+    controller: BookingController = Depends(get_booking_controller),
+) -> dict[str, object]:
+    return controller.cancel_booking(booking_id)
+
+
+@app.delete("/api/bookings/{booking_id}")
+def delete_booking(
+    booking_id: str,
+    controller: BookingController = Depends(get_booking_controller),
+) -> dict[str, object]:
+    return controller.delete_booking(booking_id)
