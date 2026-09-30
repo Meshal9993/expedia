@@ -1,8 +1,8 @@
 :root {
   color: #17233c;
-  background: #f3f6fb;
+  background: #f7f7f7;
   font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -15,9 +15,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  background:
-    linear-gradient(135deg, rgba(255, 194, 51, 0.13), transparent 30%),
-    #f3f6fb;
+  background: #f7f7f7;
 }
 
 button,
@@ -29,7 +27,7 @@ select {
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  outline: 3px solid rgba(36, 94, 168, 0.28);
+  outline: 3px solid #245ea8;
   outline-offset: 2px;
 }
 
@@ -46,19 +44,19 @@ button:disabled {
 .page-shell {
   width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 56px 0 80px;
+  padding: 24px 0 48px;
 }
 
 .search-panel {
   display: grid;
   grid-template-columns: minmax(240px, 0.85fr) minmax(380px, 1.15fr);
-  gap: 56px;
+  gap: 28px;
   align-items: end;
-  padding: 42px;
-  color: #ffffff;
-  background: #14264a;
-  border-radius: 20px;
-  box-shadow: 0 18px 45px rgba(20, 38, 74, 0.18);
+  padding: 20px;
+  color: #17233c;
+  background: #ffffff;
+  border: 1px solid #dbe2ee;
+  border-radius: 4px;
 }
 
 .heading-block,
@@ -68,15 +66,9 @@ button:disabled {
 
 .eyebrow {
   margin: 0 0 8px;
-  color: #b07100;
+  color: #59657b;
   font-size: 0.8125rem;
-  font-weight: 800;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
-
-.search-panel .eyebrow {
-  color: #f7b928;
+  font-weight: 600;
 }
 
 h1,
@@ -87,21 +79,19 @@ p {
 
 h1 {
   margin-bottom: 10px;
-  font-size: clamp(2rem, 5vw, 3.4rem);
-  line-height: 1.02;
-  letter-spacing: -0.04em;
+  font-size: 1.65rem;
+  line-height: 1.3;
 }
 
 h2 {
   margin-bottom: 0;
-  font-size: clamp(1.45rem, 3vw, 2rem);
-  letter-spacing: -0.025em;
+  font-size: 1.25rem;
 }
 
 .intro {
   max-width: 620px;
   margin-bottom: 0;
-  color: #d8e2f2;
+  color: #59657b;
   font-size: 1rem;
   line-height: 1.6;
 }
@@ -111,7 +101,7 @@ h2 {
   display: block;
   margin-bottom: 8px;
   font-size: 0.875rem;
-  font-weight: 750;
+  font-weight: 600;
 }
 
 .search-controls {
@@ -123,18 +113,16 @@ h2 {
 .search-controls input,
 select {
   width: 100%;
-  min-height: 50px;
-  padding: 0 14px;
+  min-height: 44px;
+  padding: 0 12px;
   color: #17233c;
   background: #ffffff;
   border: 1px solid #cbd5e4;
-  border-radius: 10px;
+  border-radius: 4px;
   font-size: 0.9375rem;
 }
 
 .search-controls input {
-  min-height: 52px;
-  border-color: #ffffff;
   font-size: 1rem;
 }
 
@@ -145,31 +133,25 @@ select {
 .search-controls button,
 .primary-action {
   min-height: 44px;
-  padding: 0 20px;
-  color: #17233c;
-  background: #f7b928;
-  border-radius: 10px;
-  font-weight: 800;
-}
-
-.search-controls button {
-  min-height: 52px;
-  padding: 0 24px;
+  padding: 0 16px;
+  color: #ffffff;
+  background: #245ea8;
+  border: 1px solid #245ea8;
+  border-radius: 4px;
+  font-weight: 600;
 }
 
 .search-controls button:hover:not(:disabled),
 .primary-action:hover:not(:disabled) {
-  background: #ffd05a;
+  background: #1b4b87;
 }
 
 .content-section {
   margin-top: 28px;
-  padding: 30px;
-  background: rgba(255, 255, 255, 0.82);
+  padding: 20px;
+  background: #ffffff;
   border: 1px solid #dbe2ee;
-  border-radius: 18px;
-  box-shadow: 0 12px 32px rgba(34, 56, 91, 0.07);
-  backdrop-filter: blur(8px);
+  border-radius: 4px;
 }
 
 .section-heading {
@@ -193,7 +175,7 @@ select {
   overflow-x: auto;
   background: #ffffff;
   border: 1px solid #dbe2ee;
-  border-radius: 13px;
+  border-radius: 4px;
 }
 
 table {
@@ -247,7 +229,7 @@ tbody tr:hover {
   color: #44516a;
   background: #ffffff;
   border: 1px solid #dbe2ee;
-  border-radius: 12px;
+  border-radius: 4px;
   line-height: 1.55;
 }
 
@@ -282,7 +264,7 @@ tbody tr:hover {
   padding: 24px;
   background: #f8fafd;
   border: 1px solid #dbe2ee;
-  border-radius: 14px;
+  border-radius: 4px;
 }
 
 .selected-stay {
@@ -329,7 +311,7 @@ tbody tr:hover {
 .delete-action {
   min-height: 40px;
   padding: 0 15px;
-  border-radius: 9px;
+  border-radius: 4px;
   font-weight: 750;
 }
 
@@ -384,7 +366,7 @@ tbody tr:hover {
   align-items: center;
   min-height: 28px;
   padding: 3px 10px;
-  border-radius: 999px;
+  border-radius: 4px;
   font-size: 0.78rem;
   font-weight: 800;
   text-transform: capitalize;
@@ -418,7 +400,7 @@ tbody tr:hover {
   color: #6f2630;
   background: #fff7f7;
   border: 1px solid #efc5ca;
-  border-radius: 9px;
+  border-radius: 4px;
 }
 
 .delete-confirmation p {
@@ -432,7 +414,183 @@ tbody tr:hover {
   font-size: 0.82rem;
 }
 
+.live-search-panel {
+  margin-top: 0;
+}
+
+.live-search-header {
+  display: grid;
+  grid-template-columns: 1fr minmax(300px, 0.8fr);
+  gap: 28px;
+  align-items: center;
+}
+
+.live-intro,
+.live-location {
+  margin: 10px 0 0;
+  color: #59657b;
+  line-height: 1.5;
+}
+
+.live-search-form input {
+  border-color: #aebed3;
+}
+
+.field-hint,
+.live-data-note {
+  margin: 8px 0 0;
+  color: #59657b;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.live-feedback {
+  margin-top: 24px;
+  padding: 14px 18px;
+}
+
+.live-results-heading {
+  margin-top: 28px;
+}
+
+.live-results-heading > p {
+  max-width: 340px;
+}
+
+.live-results-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.2fr);
+  gap: 20px;
+}
+
+.live-results-grid h3 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.live-map-column h3 span {
+  color: #59657b;
+  font-weight: 400;
+}
+
+.live-hotel-list {
+  display: grid;
+  gap: 8px;
+  max-height: 500px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+}
+
+.live-hotel-card {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  color: #17233c;
+  background: #fff;
+  border: 1px solid #cbd5e4;
+  border-radius: 4px;
+  text-align: left;
+}
+
+.live-hotel-card:hover {
+  border-color: #8ba4c5;
+}
+
+.live-hotel-card.is-selected {
+  background: #edf4ff;
+  border-color: #245ea8;
+}
+
+.hotel-marker-badge {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  color: #fff;
+  background: #245ea8;
+  border-radius: 50%;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.live-hotel-details {
+  display: grid;
+  gap: 7px;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+
+.live-hotel-details > span {
+  color: #59657b;
+  font-size: 0.875rem;
+}
+
+.live-hotel-details .live-selection-label {
+  color: #245ea8;
+  font-weight: 700;
+}
+
+.live-hotel-map {
+  z-index: 0;
+  height: 500px;
+  border: 1px solid #cbd5e4;
+  border-radius: 4px;
+  font-family: inherit;
+}
+
+.hotel-marker-badge {
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px #17233c55;
+}
+
+.hotel-map-marker.is-selected .hotel-marker-badge {
+  color: #17233c;
+  background: #f7b928;
+  border: 3px solid #17233c;
+  transform: scale(1.15);
+}
+
+.live-hotel-card:focus-visible,
+.hotel-map-marker:focus-visible,
+.live-search-panel input:focus-visible,
+.live-search-panel button:focus-visible {
+  outline: 3px solid #245ea8;
+  outline-offset: 2px;
+}
+
+.live-data-note {
+  margin-top: 16px;
+}
+
+.live-data-note a {
+  color: #245ea8;
+}
+
+.local-search-panel {
+  margin-top: 28px;
+}
+
+.local-search-panel h2 {
+  margin-bottom: 10px;
+}
+
 @media (max-width: 800px) {
+  .live-search-header,
+  .live-results-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .live-hotel-list {
+    max-height: 360px;
+  }
+
+  .live-hotel-map {
+    height: 360px;
+  }
+
   .page-shell {
     width: min(100% - 24px, 1180px);
     padding: 24px 0 48px;
@@ -445,8 +603,7 @@ tbody tr:hover {
 
   .search-panel {
     gap: 28px;
-    padding: 28px 22px;
-    border-radius: 16px;
+    padding: 20px 16px;
   }
 
   .content-section {

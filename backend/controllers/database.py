@@ -5,7 +5,7 @@ import sqlite3
 from contextlib import contextmanager
 from dataclasses import asdict
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, List
 
 from backend.models.entities import Booking, Hotel, HotelStay, Trip, User
 
@@ -194,7 +194,7 @@ class DatabaseController:
             if cursor.rowcount == 0:
                 raise KeyError(f"{table} record {record_id!r} not found")
 
-    def search_hotel_stays(self, name: str) -> list[HotelStay]:
+    def search_hotel_stays(self, name: str) -> List[HotelStay]:
         """Return matching hotel/trip records using a read-only SQL join."""
         with self.open() as connection:
             rows = connection.execute(

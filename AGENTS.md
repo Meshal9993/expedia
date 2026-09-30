@@ -31,3 +31,11 @@ These rules apply to the entire repository.
 - Do not commit virtual environments, installed packages, build output, caches, secrets, or local environment files.
 - Document setup and run commands in the root `README.md` when application code and dependency manifests are introduced.
 - Keep changes focused, and verify the relevant backend or frontend checks before handing off work.
+
+## Assignment 2 live hotel search
+
+- Preserve MVC boundaries: model provider-backed data in `backend/models/`, keep Geoapify calls and validation in a backend controller, keep FastAPI routes thin, and let Vue consume only the documented JSON API.
+- Represent provider data honestly. Never invent hotel price, rating, room availability, or booking information, and do not treat live places as the instructor-supplied bookable Hotel/Trip records.
+- Keep `GEOAPIFY_API_KEY` server-side in ignored `backend/.env`; never place it in frontend code, responses, or logs.
+- Preserve ZIP codes as five-digit strings, including leading zeros. Distinguish a successful empty Places result from an unresolved ZIP, provider failure, and rate-limit or quota failure.
+- Before adding dependencies, follow **CHECK → TAKE ACTION → VERIFY**: inspect existing manifests and installed capabilities, obtain approval for any needed installation or declaration, then verify the intended environment.

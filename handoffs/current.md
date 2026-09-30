@@ -1,53 +1,47 @@
 # Current handoff
 
-## What currently works
+## Assignment 2, Part 1: complete and awaiting review
 
-- The Vue frontend searches by hotel name and displays matching hotels and available stays in a labeled table.
-- A user can select a stay, choose one of six supplied demo travelers, and create a confirmed booking.
-- Booking History shows booking, traveler, hotel, stay, date, and status details and can be filtered by traveler.
-- A confirmed booking can be cancelled while remaining visible as `Cancelled`.
-- A separately selected temporary test booking can be deleted after confirmation.
-- Clear loading, success, error, empty-history, and no-results states are present.
+Final evidence verification: **September 30, 2026**, on `feature/assignment2-part1-live-hotels`.
 
-## MVC architecture and persistence
-
-- Model entities and relationships are defined in `backend/models/`.
-- `DatabaseController` exclusively owns SQLite connections, SQL, schema creation, first-time CSV seeding, foreign-key enforcement, and CRUD.
-- `SearchController` and `BookingController` own their respective business rules and use the database controller's public contract.
-- FastAPI routes remain thin HTTP adapters, and the Vue View communicates only through the documented JSON API.
-- The generated `backend/expedia.sqlite3` database is ignored by Git. It seeds the four supplied CSVs once, preserves their IDs, and does not reseed an initialized database.
-- Search, booking creation, history, cancellation, and deletion read and write SQLite after initial seeding; no changes are written back to CSV.
+- FastAPI provides `GET /api/live-hotels?zip=<five-digit ZIP>`. `backend/controllers/location.py` validates the ZIP, confirms the matching U.S. postcode, requests Geoapify hotel places within 5,000 meters (limit 20), and maps only provider-backed fields to separate DTOs.
+- `frontend/src/components/LiveHotelSearch.vue` owns the ZIP string, HTTP request, feedback states, results, and shared `selectedHotelId`. `HotelMap.vue` owns Leaflet rendering and lifecycle. List and marker selection stay synchronized.
+- The approved dependencies are `httpx==0.28.1` in `backend/.venv` and Leaflet 1.9.4 in the frontend. No dependencies were installed during evidence preparation.
+- The final visual revision uses a light background, smaller headings, basic buttons and bordered rows, with clear selected/focus states. Behavior, API contracts, Leaflet behavior, accessibility controls, and responsive layouts were preserved. Do not change this accepted interface without a new request.
+- `backend/.env` remains ignored and untracked. Its value was not displayed. The key stays server-side; OpenStreetMap tiles do not use it.
+- [Research](../docs/assignment2-part1-research.md), [early mockup](../docs/assignment2-part1-mockup.md), and [contracts](../docs/assignment2-part1-contracts.md) match the implementation. The [evidence log](../docs/assignment2-part1-evidence.md) contains the prompt/change/decision record, final media inventory, AI disclosure, and limitations.
 
 ## Final verification
 
-Manual browser review completed:
+The existing project servers were reused at `http://127.0.0.1:5173/` and `http://127.0.0.1:8000`. The backend runs without file watching because `--reload` was blocked in this local environment; README documents the fallback.
 
-- Searching for `Harbor Lantern Hotel` displayed Boston Harbor Weekend and Boston Autumn Weekend.
-- Booking `B007` appeared in Booking History after an application restart.
-- Cancelling `B007` through the frontend retained it with status `Cancelled`.
-- After a browser refresh, `B007` was still visible as `Cancelled`.
-- A separate temporary test booking was created and deleted through the frontend; it disappeared from history after the API confirmed deletion.
-- Searching for `IST402` displayed the no-results state.
-- The interface was visually reviewed at normal desktop width and at a narrower width.
+| Check | Observed result |
+| --- | --- |
+| Live ZIP `16801` | State College, Pennsylvania; 15 hotel places in this observation. |
+| Live ZIP `02108` | Boston, Massachusetts; 20 hotel places in this observation. Input and heading preserved the leading zero; one place displayed `Name unavailable`. |
+| List → map | Selecting Ramada State College opened its matching popup and selected marker. Keyboard selection and visible focus worked. |
+| Map → list | Selecting The Penn Stater Hotel & Conference Center marker selected and scrolled to the matching row. |
+| Invalid ZIP `1234` | Validation feedback appeared, `aria-invalid` was true, and previous results/map were removed. |
+| Responsive layout | Desktop 1280px: list/map side by side. Narrow 390px: stacked, no horizontal page overflow; attribution visible. |
+| Assignment 1 name search | `Harbor Lantern Hotel` returned Boston Harbor Weekend and Boston Autumn Weekend. Booking history loaded. |
+| Frontend | `npm run lint` and `npm run build` passed. |
+| Backend | Full suite: 40 passed; one existing Starlette/httpx deprecation warning. |
+| Repository | `git diff --check` passed. Source, styling, dependencies, tests, and instructor CSV hashes were unchanged by evidence preparation. `.env` remained ignored and untracked. |
 
-Automated verification completed:
+Hotel counts are observations, not future test assertions or exhaustive inventory totals. These are location results, not room availability, prices, ratings, or booking offers.
 
-- The full backend suite passed with 16 tests covering seeding, relationships, SQLite CRUD and persistence, hotel search, booking rules, and HTTP behavior.
-- Frontend lint and the production build passed.
-- Restart verification preserved the database counts and booking `B007`; starter records were not duplicated.
-- `git diff --check` passed.
-- The instructor CSV files remained unchanged.
+Earlier backend live verification on **September 30, 2026** established requested/resolved postcode equality and provider coordinates: `16801` at `(40.790200114, -77.848551881)` and `02108` at `(42.357581412, -71.065946589)`. These coordinates are the earlier observation, not a fresh API-body capture in this final browser pass. An earlier prompt requested September 29 as a label; the actual verification date was September 30.
 
-Manual evidence is stored in `docs/screenshots/`.
+The full backend suite covers mocked empty results, unresolved/mismatched ZIPs, missing provider fields, configuration errors, provider failures, rate limits, and safe responses. Earlier isolated browser mocks verified loading, empty, unresolved, service-failure, and temporary-limit messages; those mock servers were stopped. This final pass did not repeat those browser mocks or deliberately trigger a live quota error.
 
-## Current limitations
+## Assignment 1 baseline preserved
 
-- The application uses supplied demo travelers and has no authentication or authorization.
-- Payments, surge pricing, and real Expedia integrations are outside this project's scope.
-- Persistence is a local SQLite database intended for this single-project demonstration.
-- Delete remains available for explicitly selected temporary test bookings; ordinary cancellation retains the booking.
-- The Part 2 final report has not been written, and the feature branch has not yet been committed or merged.
+The SQLite hotel-name search, available stays, demo-traveler bookings, booking history/filter, cancellation, and confirmed deletion remain separate from live places. Only `DatabaseController` owns SQL and CSV import. The local ignored SQLite database seeds instructor CSVs once and never writes changes back to them.
 
-## Next task
+Earlier Assignment 1 browser checks covered booking persistence across restart, cancellation retention, deletion of a temporary booking, and no-results feedback. The final pass repeated name search and history loading; it did not create/cancel/delete bookings. Existing backend tests still cover those behaviors.
 
-Perform the final Git diff review, commit the completed Part 2 work, and merge the feature branch according to the submission workflow.
+## Evidence and next step
+
+The student intentionally removed the Part 1 screenshots and requested video-only media evidence. The existing September 30 `.mov` is indexed in the [evidence log](../docs/assignment2-part1-evidence.md); deleted screenshot references have been removed. Earlier Assignment 1 screenshots were preserved. The older `.mp4` is a Git LFS pointer in this checkout, not playable local video content.
+
+Manual items: confirm the exact selected AI model/version and any earlier tools/models in the disclosure; review the existing `.mov` for final-interface coverage and accidental sensitive content before submission. Real-device/screen-reader testing and a broader browser matrix were not performed. No application changes or commit were made in this evidence step. The existing Assignment 1 `report.md` was left untouched; no Assignment 2 report was drafted. The student has confirmed the evidence and disclosure are complete and authorized the final commit, merge, and push. Prepare the Assignment 2 report only when separately requested.

@@ -13,8 +13,18 @@ from backend.controllers.booking import (
     BookingReferenceError,
 )
 from backend.controllers.database import DatabaseController
+from backend.controllers.location import (
+    InvalidZipError,
+    LocationConfigurationError,
+    LocationController,
+    LocationError,
+    ProviderFailureError,
+    ProviderRateLimitError,
+    UnresolvedZipError,
+)
 from backend.controllers.search import SearchController
 from backend.models.api import BookingCreateRequest, BookingUpdateRequest
+from backend.models.live_hotels import LiveHotelSearchResponse
 
 
 DATABASE_PATH = Path(__file__).parent / "expedia.sqlite3"
@@ -42,6 +52,25 @@ def get_booking_controller(
     return BookingController(database)
 
 
+def get_location_controller() -> LocationController:
+    return LocationController()
+
+
+LOCATION_ERROR_RESPONSES = {
+    InvalidZipError: (422, "Enter exactly five digits for a U.S. ZIP code."),
+    UnresolvedZipError: (404, "ZIP code could not be resolved."),
+    ProviderRateLimitError: (429, "Hotel searches are temporarily limited. Try again later."),
+    ProviderFailureError: (502, "Hotel search service is unavailable. Try again later."),
+    LocationConfigurationError: (503, "Hotel search service is not configured."),
+}
+
+
+@app.exception_handler(LocationError)
+def location_error_handler(_, error: LocationError) -> JSONResponse:
+    status_code, detail = LOCATION_ERROR_RESPONSES[type(error)]
+    return JSONResponse(status_code=status_code, content={"detail": detail})
+
+
 @app.exception_handler(BookingNotFoundError)
 def booking_not_found_handler(_, error: BookingNotFoundError) -> JSONResponse:
     return JSONResponse(status_code=404, content={"detail": str(error)})
@@ -58,6 +87,18 @@ def search_hotels(
     database: DatabaseController = Depends(get_database),
 ) -> dict[str, object]:
     return SearchController(database).search_hotels(name)
+
+
+@app.get(
+    "/api/live-hotels",
+    response_model=LiveHotelSearchResponse,
+    response_model_exclude_none=True,
+)
+def search_live_hotels(
+    zip_code: str = Query(default="", alias="zip"),
+    controller: LocationController = Depends(get_location_controller),
+) -> LiveHotelSearchResponse:
+    return controller.search_live_hotels(zip_code)
 
 
 @app.post("/api/bookings", status_code=201)

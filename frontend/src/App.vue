@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, ref } from 'vue'
+import LiveHotelSearch from './components/LiveHotelSearch.vue'
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
 
@@ -252,10 +253,12 @@ onMounted(() => loadBookingHistory(false))
 
 <template>
   <main class="page-shell">
-    <section class="search-panel" aria-labelledby="page-title">
+    <LiveHotelSearch :api-base-url="apiBaseUrl" />
+
+    <section class="search-panel local-search-panel" aria-labelledby="page-title">
       <div class="heading-block">
-        <p class="eyebrow">Hotel search</p>
-        <h1 id="page-title">Find your next stay</h1>
+        <p class="eyebrow">Local demo bookings</p>
+        <h2 id="page-title">Find your next stay</h2>
         <p class="intro">Search by hotel name, choose an available stay, and book for a demo traveler.</p>
       </div>
 
