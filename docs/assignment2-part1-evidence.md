@@ -62,4 +62,3 @@ I also used Codex's annotate/comment feature to point directly to parts of the i
 
 Codex also helped with research and document planning, MVC/API contracts, backend implementation and mocked tests, Vue/Leaflet implementation, and automated and browser verification. I provided the instructions, approvals, and feedback and reviewed the results.
 
-**Verified tool:** OpenAI Codex desktop app. The exact model identifier for the earlier work is not recorded. If required for submission: **[fill in the exact model from the app/session record]**. No model name is guessed.
