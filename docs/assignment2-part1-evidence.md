@@ -1,6 +1,6 @@
 # Assignment 2, Part 1 evidence log
 
-Final verification: **September 30, 2026** (America/New_York). Branch: `feature/assignment2-part1-live-hotels`. Implementation is complete; this step prepared documentation and evidence only. Application behavior, styling, API contracts, dependency files, tests, and instructor data were unchanged. The existing Assignment 1 `report.md` was left untouched; no Assignment 2 report or commit was created.
+Final verification: **September 30, 2026** (America/New_York). Work was completed on `feature/assignment2-part1-live-hotels` and merged into `main`; both branches were pushed to [Meshal9993/expedia](https://github.com/Meshal9993/expedia). The assessed implementation commit is `85d0ac345a451267742c456a3d1ee70e524e3f72`. The [final report](../report.md) was added separately in `49962a4f0b4d4d368233cfa851f65d470b2881b8`. Documentation reviews do not change application behavior or the recorded test results.
 
 ## Instructions, changes, and decisions
 
@@ -14,7 +14,8 @@ Instruction summaries below are paraphrases of the project conversation, not inv
 | Implement only the backend under MVC (prompt 05). | `backend/config.py`, `models/live_hotels.py`, `controllers/location.py`, and thin route in `main.py`; mocked tests in `tests/test_live_hotels.py`. | Mocked ZIP, mapping, error, and credential-safety checks; earlier live API-body checks. | Return provider-backed location DTOs; distinguish empty success from unresolved ZIP/provider/quota errors. | Missing names use `Name unavailable`; missing addresses are omitted; no invented hotel fields. |
 | Add Vue and Leaflet without exposing the key (prompt 06). | `LiveHotelSearch.vue`, `HotelMap.vue`, `App.vue`, and CSS. | Live browser searches, synchronized selection, keyboard use, and responsive layout. | One shared `selectedHotelId`; OpenStreetMap tiles and visible attribution. | No room availability or booking connection for live places; no real-device/screen-reader audit. |
 | Simplify the polished presentation without changing functionality. | Light background, smaller heading, simple buttons/borders; decorative eyebrow and list badges removed. | Live searches/selection, lint/build, backend suite, and whitespace checks repeated. | Keep the accepted student-project styling and all feedback states. | Earlier polished screenshots are not used as final styling evidence. |
-| Prepare final evidence; do not edit behavior, write report, or commit. | This log, updated handoff/reference docs, and browser verification; the student later chose video-only Part 1 media evidence. | Final checks below; source/style/manifest/test/CSV hashes compared before and after. | Document current results and clearly label historical checks. | No exact model variant is inferred; the student supplied the Codex disclosure below and confirmed the evidence was complete. |
+| Prepare final evidence before writing the report or committing. | This log, updated handoff/reference docs, and browser verification; the student later chose video-only Part 1 media evidence. | Final checks below; source/style/manifest/test/CSV hashes compared before and after evidence preparation. | Document results and clearly label historical checks. | No exact model ID is recorded; the student supplied the Codex disclosure below and confirmed the evidence was complete. |
+| Commit and publish the completed work, then add the finished report separately. | Implementation commit `85d0ac3` and report-only commit `49962a4`. | Both implementation branches were verified on GitHub; the report was pushed to `main`; Git status was clean after each push. | Preserve the feature branch and assess the implementation at `85d0ac3`. | GitHub accepted the retained MOV with a file-size warning. |
 
 ## Final verification performed
 
@@ -49,27 +50,16 @@ The student intentionally deleted the Part 1 screenshots and requested that only
 | --- | --- |
 | [September 30 demo recording](<screenshots/Screen Recording 2026-09-30 at 7.14.18 PM.mov>) | QuickTime MOV, about 78 MiB; retained at the student's request. Playback/content was not independently reviewed during automated verification. |
 
-No new demo video was recorded or edited during evidence preparation. Before the final commit, lint, build, all 40 backend tests, and the requested live/browser checks passed again. The student confirmed the evidence and AI disclosure were complete and authorized committing, merging, and pushing; the Assignment 2 report remains a separate task.
+No new demo video was recorded or edited during evidence preparation. Before the implementation commit, lint, build, all 40 backend tests, and the requested live/browser checks passed again. The student confirmed the evidence and AI disclosure were complete. The implementation and the separate finished report have since been committed and pushed.
 
 Earlier Assignment 1 assets were preserved: [search success](screenshots/search-success.png), [no results](screenshots/search-no-results.png), and [September 21 recording](<screenshots/Recording 2026-09-21 210541.mp4>). The `.mp4` currently contains a 134-byte Git LFS pointer, not the video payload, so it is not playable from this checkout. It is not counted as a playable Part 1 demo.
 
 ## AI disclosure
 
-**Verified tool:** OpenAI **Codex**, used in the desktop app for this project/session. The session describes the assistant as based on **GPT-6**; that identifies a family, not a verifiable exact selected model ID/version for every earlier step. No model variant is inferred from the list of available tools/models.
-
-**Student to complete before submission:**
-
-- Exact model identifier/version shown for the work: **[fill in from the app/session record]**.
-- Any other AI tools/models used in earlier work: **[list verified names, or confirm none]**. This project record cannot establish them.
-
-AI assisted with research and document planning; MVC/API contract planning; backend DTO/controller/route implementation and mocked tests; Vue/Leaflet implementation and the requested styling revision; automated lint/build/pytest checks; browser verification; and evidence/handoff documentation. The student provided scope, constraints, dependency approvals, acceptance, and revision instructions. AI-generated work was checked against the implementation and the recorded tests; those checks do not replace the student's responsibility to understand and review the submission.
-
-The disclosure's verified information and manual placeholders are intentionally separate. Do not replace the placeholders with guessed model names. The assignment report remains pending a separate request.
-
-## AI Disclosure
-
-### Codex
-
 I used Codex to help inspect and edit the project code, run tests, and verify the application.
 
 I also used Codex's annotate/comment feature to point directly to parts of the interface that I wanted to review or change. This helped me give focused feedback without changing unrelated parts of the page.
+
+Codex also helped with research and document planning, MVC/API contracts, backend implementation and mocked tests, Vue/Leaflet implementation, and automated and browser verification. I provided the instructions, approvals, and feedback and reviewed the results.
+
+**Verified tool:** OpenAI Codex desktop app. The exact model identifier for the earlier work is not recorded. If required for submission: **[fill in the exact model from the app/session record]**. No model name is guessed.

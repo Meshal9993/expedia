@@ -1,21 +1,16 @@
-# Booking — Assignment 2 Part 1
+# Assignment 2 Part 1
 
 ## Project access
 
-Repository:
-https://github.com/Meshal9993/expedia
+Repository: [Meshal9993/expedia](https://github.com/Meshal9993/expedia)
 
-commit:
-85d0ac345a451267742c456a3d1ee70e524e3f72
+Assessed implementation commit: 85d0ac345a451267742c456a3d1ee70e524e3f72.
 
-Frontend:
-http://127.0.0.1:5173
+Local frontend: [http://127.0.0.1:5173/](http://127.0.0.1:5173/)
 
-Backend:
-http://127.0.0.1:8000
+Local backend: [http://127.0.0.1:8000](http://127.0.0.1:8000)
 
-The Geoapify API key is stored in backend/.env.
-
+The Geoapify API key is stored in ignored, untracked `backend/.env` and stays in the backend. These local URLs require the project servers to be running.
 
 ## Research notes
 
@@ -31,7 +26,6 @@ Sources:
 
 The API key is kept in the backend and is not exposed in the frontend.
 
-The application only displays information returned by Geoapify. 
 
 
 ## Early mockup
@@ -50,7 +44,7 @@ https://github.com/Meshal9993/expedia/blob/main/docs/assignment2-part1-mockup.md
 
 ## Implementation
 
-The user enters a five digit U.S. ZIP code.
+The user enters a five-digit U.S. ZIP code stored as text, so leading zeros are preserved.
 
 The backend uses Geoapify to find the ZIP code location and search for nearby hotels within 5 km.
 
@@ -84,9 +78,11 @@ I also tested:
 - API failure
 - rate limit
 
-All tests passed.
+Final verification on September 30, 2026 passed: frontend lint, frontend production build, and all 40 backend tests. 
 
-The original hotel search from Assignment 1 still works.
+Empty results, unresolved ZIPs, API failure, and rate limits were checked with mocks, without deliberately exhausting the live service. The final browser pass repeated the live searches, selection, and invalid-input checks; earlier browser failure checks were not repeated.
+
+The original Assignment 1 search for Harbor Lantern Hotel returned Boston Harbor Weekend and Boston Autumn Weekend. Booking history also loaded.
 
 
 ## AI disclosure and evidence log

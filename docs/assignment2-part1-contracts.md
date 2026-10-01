@@ -1,6 +1,6 @@
 # Assignment 2, Part 1: live hotel search contracts
 
-**Status:** backend endpoint, Vue list/map, synchronized selection, and mocked/live verification are implemented. This feature discovers hotel *places* near a U.S. ZIP code. It does not create bookings or change the instructor CSV/SQLite models.
+**Status:** complete, matching the [final report](../report.md) and assessed implementation commit `85d0ac345a451267742c456a3d1ee70e524e3f72`. This feature discovers hotel *places* near a U.S. ZIP code. It does not create bookings or change the instructor CSV/SQLite models.
 
 ## MVC ownership and models
 
@@ -61,7 +61,7 @@ No response contains the API key, provider request URL, or raw exception text.
 
 ## Vue state contract
 
-The single input is a ZIP string. Vue distinguishes `idle`, `loading`, `invalid ZIP`, `unresolved ZIP`, `results`, `no nearby hotels`, `provider/service failure`, and `quota/rate-limit failure`. Invalid input makes no API call. A `200` response with a nonempty `hotels` list shows the list and Leaflet markers; a `200` response with `hotels: []` shows “No hotels found within 5 km.” The error status codes above select the other states. Clear or hide stale results when a new search starts or fails.
+The single input is a ZIP string. Vue distinguishes `idle`, `loading`, `invalid ZIP`, `unresolved ZIP`, `results`, `no nearby hotels`, `provider/service failure`, and `quota/rate-limit failure`. Invalid input makes no API call. A `200` response with a nonempty `hotels` list shows the list and Leaflet markers; a `200` response with `hotels: []` shows “No nearby hotels were found within 5 km of this ZIP location.” The error status codes above select the other states. Clear or hide stale results when a new search starts or fails.
 
 Vue holds one shared `selectedHotelId` equal to the selected result's `place_id`. Selecting a list item highlights its marker; selecting a marker highlights its list item. Map and data-source attribution remain visible. Neither the backend Geoapify key nor a provider request is placed in Vue code. `.gitignore` already ignores `.env` at the repository root and in `backend/`; never track `backend/.env`.
 
@@ -69,4 +69,4 @@ Vue holds one shared `selectedHotelId` equal to the selected result's `place_id`
 
 `frontend/src/App.vue` supplies the API base URL to `frontend/src/components/LiveHotelSearch.vue`. That component validates the ZIP string and requests `/api/live-hotels`; `backend/main.py` calls `LocationController.search_live_hotels` in `backend/controllers/location.py`. The controller reads the server-side key through `backend/config.py`, calls Geoapify geocoding and then Places, and returns the DTOs from `backend/models/live_hotels.py`. Vue passes the returned center, hotels, and shared selection to `frontend/src/components/HotelMap.vue`; OpenStreetMap supplies the tiles separately.
 
-The final styling revision did not change this contract or Leaflet behavior. Final live/browser checks and the mocked backend checks are recorded in the [evidence log](assignment2-part1-evidence.md).
+The final styling revision did not change this contract or Leaflet behavior. The [evidence log](assignment2-part1-evidence.md) records live `16801` and `02108`, invalid `1234`, synchronized selection, and mocked failure checks. Frontend lint/build and all 40 backend tests passed in the recorded final verification.

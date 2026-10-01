@@ -2,6 +2,8 @@
 
 This repository is an Expedia-style travel application. It keeps the FastAPI backend and Vue frontend separate while preserving the instructor-supplied CSV data as read-only source data.
 
+Repository: [Meshal9993/expedia](https://github.com/Meshal9993/expedia). The [Assignment 2 Part 1 report](report.md) assesses implementation commit `85d0ac345a451267742c456a3d1ee70e524e3f72`. The report was published separately in `49962a4f0b4d4d368233cfa851f65d470b2881b8`.
+
 ## Project layout
 
 ```text
@@ -36,7 +38,7 @@ The relationships are:
 - `bookings.trip_id` references `trips.trip_id`.
 - `booking_id`, `user_id`, `trip_id`, and `hotel_id` are the identifiers for their respective records.
 
-## Current Part 2 behavior
+## Assignment 1 Part 2 behavior
 
 - Hotel-name search returns matching hotels and available stays from SQLite.
 - A user can select a stay and create a confirmed booking for one of the six supplied demo travelers.
@@ -123,4 +125,6 @@ The frontend defaults to the FastAPI service at `http://127.0.0.1:8000`; `VITE_A
 
 ## Assignment 2, Part 1 evidence
 
-The implementation and final simplified interface were verified on September 30, 2026. The [evidence log](docs/assignment2-part1-evidence.md) links the retained demo video (the student chose to omit Part 1 screenshots), records decisions and revised approaches, separates live from mocked checks, and includes the AI disclosure and remaining manual items. See also the [research](docs/assignment2-part1-research.md), [early mockup](docs/assignment2-part1-mockup.md), [contracts](docs/assignment2-part1-contracts.md), and [current handoff](handoffs/current.md). The existing Assignment 1 `report.md` was left untouched; no Assignment 2 report or commit was created during final evidence preparation.
+The implementation and final simplified interface were verified on September 30, 2026: live `16801`, leading-zero `02108`, invalid `1234`, both selection directions, and the original `Harbor Lantern Hotel` search passed. Frontend lint/build and all 40 backend tests passed. Empty, unresolved, service-failure, and rate-limit cases were checked with mocks; counts are live observations, not fixed test expectations.
+
+The [final report](report.md) and [evidence log](docs/assignment2-part1-evidence.md) describe the completed work, retained demo video, revised approaches, AI disclosure, and limitations. Part 1 media is video-only at the student's request. See also the [research](docs/assignment2-part1-research.md), [early mockup](docs/assignment2-part1-mockup.md), [contracts](docs/assignment2-part1-contracts.md), and [current handoff](handoffs/current.md).

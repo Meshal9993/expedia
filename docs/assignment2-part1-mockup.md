@@ -20,7 +20,7 @@ Address, if provided                 -----------------------
 ------------------------------------------------------------
 ```
 
-The list and map share one selection: choosing a hotel row highlights its marker, and choosing a marker highlights its row. On a narrow screen, the list and map can stack. This mockup may change during implementation.
+This is the original planning sketch; `16802` was an early example, not a final verification ZIP. The list and map share one selection: choosing a hotel row highlights its marker, and choosing a marker highlights its row. On a narrow screen, the list and map stack. The sketch was allowed to change during implementation.
 
 Planned feedback in the results area:
 
@@ -33,8 +33,10 @@ Service unavailable               Please retry later.
 Searches temporarily limited      Please try again later.
 ```
 
-No price, rating, or availability will be shown unless the API actually provides it. A place on the map is not a bookable stay.
+The final UI shows no price, rating, availability, or booking information. A place on the map is not a bookable stay.
 
 ## Final outcome — September 30, 2026
 
-The early sketch is retained as planning evidence. The implemented heading is **Live Hotel Search**, and the input accepts any five-digit U.S. ZIP string. The list/map arrangement, shared selection, and feedback states were retained. Styling was simplified to a light background, modest headings, basic buttons, and bordered hotel rows; the decorative eyebrow and list number badges were removed. Map markers and attribution remain. No live price, rating, availability, or booking fields were added. See the [demo video and verification](assignment2-part1-evidence.md).
+The implemented heading is **Live Hotel Search**, with an empty text ZIP input (placeholder `e.g. 16801`), a **Search** button, and an idle instruction. Results show `Hotels near <ZIP>`, a **Hotel places** list, and a **Map · within 5 km**. The layout and shared selection follow the sketch; loading, invalid, unresolved, empty, service-failure, and rate-limit messages remain.
+
+The final style uses a light background, modest headings, basic buttons, bordered rows, and clear selected/focus states. Map attribution stays visible. The [report](../report.md) and [evidence log](assignment2-part1-evidence.md) record final checks with `16801`, `02108`, and invalid `1234`.

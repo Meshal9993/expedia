@@ -1,6 +1,6 @@
 # Assignment 2, Part 1: live hotel search research
 
-These decisions are implemented and verified as of September 30, 2026. A live place result identifies a hotel location; it does **not** prove that a room is available to book. See the [evidence log](assignment2-part1-evidence.md) for observed results and limitations.
+These decisions match the [final report](../report.md) and the implementation verified on September 30, 2026. The four official sources linked below are the report's research sources. A live place result identifies a hotel location; it does **not** prove that a room is available to book. See the [evidence log](assignment2-part1-evidence.md) for observations and limitations.
 
 ## Interaction and layout
 
@@ -12,17 +12,17 @@ These decisions are implemented and verified as of September 30, 2026. A live pl
 
 1. Accept exactly five ASCII digits (`^[0-9]{5}$`) in both the View and the FastAPI boundary. Do not convert the ZIP to a number.
 2. The backend geocodes it with Geoapify Forward Geocoding using `text=<ZIP>`, `type=postcode`, `filter=countrycode:us`, and `format=json`. Accept a center only when the response matches the requested postcode and U.S. country code and has valid coordinates. The country filter matters because postcodes are not globally unique ([Forward Geocoding](https://apidocs.geoapify.com/docs/geocoding/forward-geocoding/)).
-3. The backend searches Geoapify Places with `categories=accommodation.hotel` and `filter=circle:lon,lat,5000`, centered on that geocoded point. A proximity bias can order nearby results; the circle filter enforces the 5 km radius. Places returns point locations and may include names and addresses ([Places API](https://apidocs.geoapify.com/docs/places/)). A result limit means the list may not be a complete inventory.
+3. The backend searches Geoapify Places with `categories=accommodation.hotel` and `filter=circle:lon,lat,5000`, centered on that geocoded point, with a limit of 20. A proximity bias orders nearby results; the circle filter sets the 5 km radius. Places returns point locations and may include names and addresses ([Places API](https://apidocs.geoapify.com/docs/places/)). The results are not a complete inventory.
 4. Return only supported place details to Vue, such as name, address if present, coordinates, and a stable place identifier. Do not invent price, rating, room availability, or booking data. Keep these live places separate from the supplied SQLite hotels and their booking records.
 
 ## Implemented states
 
 | State | Message or behavior |
 | --- | --- |
-| Loading | Show “Searching nearby hotels…” and prevent duplicate submissions. |
+| Loading | Show “Searching for hotels…” and prevent duplicate submissions. |
 | Invalid ZIP | Ask for exactly five digits before calling the backend. |
 | Unresolved ZIP | Explain that the ZIP could not be found. |
-| No nearby hotels | Say “No hotels found within 5 km” after a successful search. |
+| No nearby hotels | Explain that no nearby hotels were found within 5 km after a successful search. |
 | API/service failure | Say the service is unavailable and offer a retry. |
 | Quota/rate-limit failure | Explain that searches are temporarily limited and suggest trying later. |
 

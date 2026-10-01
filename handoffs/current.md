@@ -1,8 +1,8 @@
 # Current handoff
 
-## Assignment 2, Part 1: complete and awaiting review
+## Assignment 2, Part 1: complete and published
 
-Final evidence verification: **September 30, 2026**, on `feature/assignment2-part1-live-hotels`.
+Final evidence verification: **September 30, 2026**, on `feature/assignment2-part1-live-hotels`. The assessed implementation commit is `85d0ac345a451267742c456a3d1ee70e524e3f72`, merged into `main` and pushed on both branches to [Meshal9993/expedia](https://github.com/Meshal9993/expedia). The [final report](../report.md) was added and pushed to `main` in the separate report-only commit `49962a4f0b4d4d368233cfa851f65d470b2881b8`. Local URLs are frontend `http://127.0.0.1:5173/` and backend `http://127.0.0.1:8000`.
 
 - FastAPI provides `GET /api/live-hotels?zip=<five-digit ZIP>`. `backend/controllers/location.py` validates the ZIP, confirms the matching U.S. postcode, requests Geoapify hotel places within 5,000 meters (limit 20), and maps only provider-backed fields to separate DTOs.
 - `frontend/src/components/LiveHotelSearch.vue` owns the ZIP string, HTTP request, feedback states, results, and shared `selectedHotelId`. `HotelMap.vue` owns Leaflet rendering and lifecycle. List and marker selection stay synchronized.
@@ -44,4 +44,6 @@ Earlier Assignment 1 browser checks covered booking persistence across restart, 
 
 The student intentionally removed the Part 1 screenshots and requested video-only media evidence. The existing September 30 `.mov` is indexed in the [evidence log](../docs/assignment2-part1-evidence.md); deleted screenshot references have been removed. Earlier Assignment 1 screenshots were preserved. The older `.mp4` is a Git LFS pointer in this checkout, not playable local video content.
 
-Manual items: confirm the exact selected AI model/version and any earlier tools/models in the disclosure; review the existing `.mov` for final-interface coverage and accidental sensitive content before submission. Real-device/screen-reader testing and a broader browser matrix were not performed. No application changes or commit were made in this evidence step. The existing Assignment 1 `report.md` was left untouched; no Assignment 2 report was drafted. The student has confirmed the evidence and disclosure are complete and authorized the final commit, merge, and push. Prepare the Assignment 2 report only when separately requested.
+The student confirmed the evidence and Codex disclosure are complete. Only an exact model identifier remains a manual placeholder if the assignment requires one; no model name is guessed. The MOV's playback/content was not independently reviewed during automated verification. Real-device/screen-reader testing and a broader browser matrix were not performed.
+
+The implementation, evidence, and report are published. This documentation consistency review changes no application code or recorded results and must remain uncommitted until reviewed.
