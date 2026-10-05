@@ -444,6 +444,40 @@ tbody tr:hover {
   line-height: 1.5;
 }
 
+.live-source-label {
+  font-weight: 600;
+}
+
+.live-hotel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 14px;
+}
+
+.live-hotel-actions button {
+  padding: 8px 10px;
+}
+
+.live-demo-nights {
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.live-demo-nights table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.live-demo-nights th,
+.live-demo-nights td {
+  padding: 6px;
+  border: 1px solid #d1d5db;
+  text-align: left;
+}
+
 .live-feedback {
   margin-top: 24px;
   padding: 14px 18px;

@@ -23,8 +23,15 @@ from backend.controllers.location import (
     UnresolvedZipError,
 )
 from backend.controllers.search import SearchController
+from backend.controllers.saved_hotels import (
+    LocalStorageError, SavedHotelController, SavedHotelNotFoundError,
+)
 from backend.models.api import BookingCreateRequest, BookingUpdateRequest
 from backend.models.live_hotels import LiveHotelSearchResponse
+from backend.models.saved_hotels import (
+    RemoveHotelResponse, SaveHotelRequest, SaveHotelResponse,
+    SavedHotelSearchResponse, SavedHotelStatusResponse,
+)
 
 
 DATABASE_PATH = Path(__file__).parent / "expedia.sqlite3"
@@ -56,6 +63,12 @@ def get_location_controller() -> LocationController:
     return LocationController()
 
 
+def get_saved_hotel_controller(
+    database: DatabaseController = Depends(get_database),
+) -> SavedHotelController:
+    return SavedHotelController(database)
+
+
 LOCATION_ERROR_RESPONSES = {
     InvalidZipError: (422, "Enter exactly five digits for a U.S. ZIP code."),
     UnresolvedZipError: (404, "ZIP code could not be resolved."),
@@ -74,6 +87,16 @@ def location_error_handler(_, error: LocationError) -> JSONResponse:
 @app.exception_handler(BookingNotFoundError)
 def booking_not_found_handler(_, error: BookingNotFoundError) -> JSONResponse:
     return JSONResponse(status_code=404, content={"detail": str(error)})
+
+
+@app.exception_handler(LocalStorageError)
+def local_storage_error_handler(_, __) -> JSONResponse:
+    return JSONResponse(status_code=503, content={"detail": "Local hotel storage is unavailable. Try again later."})
+
+
+@app.exception_handler(SavedHotelNotFoundError)
+def saved_hotel_not_found_handler(_, __) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": "Hotel is not saved locally."})
 
 
 @app.exception_handler(BookingReferenceError)
@@ -99,6 +122,39 @@ def search_live_hotels(
     controller: LocationController = Depends(get_location_controller),
 ) -> LiveHotelSearchResponse:
     return controller.search_live_hotels(zip_code)
+
+
+@app.get("/api/saved-hotels", response_model=SavedHotelSearchResponse)
+def search_saved_hotels(
+    zip_code: str = Query(default="", alias="zip"),
+    controller: SavedHotelController = Depends(get_saved_hotel_controller),
+) -> SavedHotelSearchResponse:
+    return controller.search(zip_code)
+
+
+@app.get("/api/saved-hotels/status", response_model=SavedHotelStatusResponse)
+def saved_hotel_status(
+    place_id: list[str] = Query(default=[], max_length=100),
+    controller: SavedHotelController = Depends(get_saved_hotel_controller),
+) -> SavedHotelStatusResponse:
+    return SavedHotelStatusResponse(saved_ids=controller.status(place_id))
+
+
+@app.post("/api/saved-hotels", response_model=SaveHotelResponse)
+def save_hotel(
+    request: SaveHotelRequest,
+    controller: SavedHotelController = Depends(get_saved_hotel_controller),
+) -> SaveHotelResponse:
+    return SaveHotelResponse(hotel=controller.save(request))
+
+
+@app.delete("/api/saved-hotels", response_model=RemoveHotelResponse)
+def remove_hotel(
+    place_id: str = Query(min_length=1),
+    controller: SavedHotelController = Depends(get_saved_hotel_controller),
+) -> RemoveHotelResponse:
+    controller.remove(place_id)
+    return RemoveHotelResponse(place_id=place_id)
 
 
 @app.post("/api/bookings", status_code=201)

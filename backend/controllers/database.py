@@ -1,13 +1,18 @@
-"""SQLite persistence for the four instructor-supplied entities."""
+"""SQLite persistence for instructor entities and separate classroom hotel data."""
 
 import csv
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import asdict
+from datetime import date
 from pathlib import Path
 from typing import Iterator, List
 
 from backend.models.entities import Booking, Hotel, HotelStay, Trip, User
+from backend.models.saved_hotels import (
+    DemoHotelNight, SavedHotel, SavedHotelSearchResponse, SavedHotelWithNights,
+    SavedSearchCenter,
+)
 
 
 Entity = Hotel | Trip | User | Booking
@@ -50,7 +55,7 @@ class DatabaseController:
             connection.close()
 
     def initialize(self) -> None:
-        """Create schema and import the read-only CSVs once for a new database."""
+        """Apply additive schema updates and seed the read-only CSVs only once."""
         with self.open() as connection:
             connection.executescript(
                 """
@@ -82,6 +87,52 @@ class DatabaseController:
                 CREATE TABLE IF NOT EXISTS metadata (
                     key TEXT PRIMARY KEY,
                     value TEXT NOT NULL
+                );
+                -- Additive, repeatable Assignment 2 Part 2 schema migration.
+                CREATE TABLE IF NOT EXISTS saved_hotels (
+                    hotel_id TEXT NOT NULL PRIMARY KEY COLLATE BINARY,
+                    name TEXT,
+                    address TEXT,
+                    latitude REAL NOT NULL CHECK (
+                        typeof(latitude) IN ('integer', 'real')
+                        AND latitude BETWEEN -90 AND 90
+                    ),
+                    longitude REAL NOT NULL CHECK (
+                        typeof(longitude) IN ('integer', 'real')
+                        AND longitude BETWEEN -180 AND 180
+                    )
+                );
+                -- These rates and room counts are fictional classroom defaults.
+                CREATE TABLE IF NOT EXISTS demo_hotel_nights (
+                    hotel_id TEXT NOT NULL
+                        REFERENCES saved_hotels(hotel_id) ON DELETE RESTRICT,
+                    stay_date TEXT NOT NULL CHECK (
+                        stay_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+                        AND date(stay_date, '+0 days') IS NOT NULL
+                        AND date(stay_date, '+0 days') = stay_date
+                    ),
+                    nightly_rate_cents INTEGER NOT NULL DEFAULT 10000 CHECK (
+                        typeof(nightly_rate_cents) = 'integer'
+                        AND nightly_rate_cents >= 0
+                    ),
+                    rooms_available INTEGER NOT NULL DEFAULT 20 CHECK (
+                        typeof(rooms_available) = 'integer'
+                        AND rooms_available >= 0
+                    ),
+                    PRIMARY KEY (hotel_id, stay_date)
+                );
+                CREATE TABLE IF NOT EXISTS saved_hotel_locations (
+                    hotel_id TEXT NOT NULL
+                        REFERENCES saved_hotels(hotel_id) ON DELETE RESTRICT,
+                    requested_zip TEXT NOT NULL CHECK (
+                        requested_zip GLOB '[0-9][0-9][0-9][0-9][0-9]'
+                    ),
+                    resolved_postcode TEXT NOT NULL CHECK (resolved_postcode = requested_zip),
+                    city TEXT,
+                    state TEXT,
+                    latitude REAL NOT NULL CHECK (latitude BETWEEN -90 AND 90),
+                    longitude REAL NOT NULL CHECK (longitude BETWEEN -180 AND 180),
+                    PRIMARY KEY (hotel_id, requested_zip)
                 );
                 """
             )
@@ -209,3 +260,86 @@ class DatabaseController:
                 (name,),
             ).fetchall()
         return [HotelStay(**dict(row)) for row in rows]
+
+    @staticmethod
+    def _saved_hotel(connection: sqlite3.Connection, row: sqlite3.Row) -> SavedHotelWithNights:
+        nights = connection.execute(
+            "SELECT stay_date, nightly_rate_cents, rooms_available "
+            "FROM demo_hotel_nights WHERE hotel_id = ? ORDER BY stay_date",
+            (row["hotel_id"],),
+        ).fetchall()
+        return SavedHotelWithNights(
+            place_id=row["hotel_id"], name=row["name"],
+            formatted_address=row["address"], latitude=row["latitude"],
+            longitude=row["longitude"],
+            demo_nights=[DemoHotelNight(**dict(night)) for night in nights],
+        )
+
+    def save_api_hotel(
+        self, hotel: SavedHotel, center: SavedSearchCenter, stay_dates: tuple[date, ...],
+    ) -> SavedHotelWithNights:
+        """Atomically save identity, ZIP context, and missing demo nights only."""
+        with self.open() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute(
+                "INSERT INTO saved_hotels (hotel_id, name, address, latitude, longitude) "
+                "VALUES (?, ?, ?, ?, ?) ON CONFLICT(hotel_id) DO NOTHING",
+                (hotel.place_id, hotel.name, hotel.formatted_address, hotel.latitude, hotel.longitude),
+            )
+            connection.execute(
+                "INSERT INTO saved_hotel_locations "
+                "(hotel_id, requested_zip, resolved_postcode, city, state, latitude, longitude) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(hotel_id, requested_zip) DO NOTHING",
+                (hotel.place_id, center.requested_zip, center.resolved_postcode,
+                 center.city, center.state, center.latitude, center.longitude),
+            )
+            connection.executemany(
+                "INSERT INTO demo_hotel_nights (hotel_id, stay_date) VALUES (?, ?) "
+                "ON CONFLICT(hotel_id, stay_date) DO NOTHING",
+                [(hotel.place_id, stay_date.isoformat()) for stay_date in stay_dates],
+            )
+            row = connection.execute(
+                "SELECT * FROM saved_hotels WHERE hotel_id = ?", (hotel.place_id,),
+            ).fetchone()
+            return self._saved_hotel(connection, row)
+
+    def get_saved_hotels(self, zip_code: str) -> SavedHotelSearchResponse:
+        """Return only hotels associated with this exact ZIP and stored context."""
+        with self.open() as connection:
+            connection.execute("BEGIN")
+            context = connection.execute(
+                "SELECT requested_zip, resolved_postcode, city, state, latitude, longitude "
+                "FROM saved_hotel_locations WHERE requested_zip = ? ORDER BY hotel_id LIMIT 1",
+                (zip_code,),
+            ).fetchone()
+            rows = connection.execute(
+                "SELECT h.* FROM saved_hotels h JOIN saved_hotel_locations l "
+                "ON h.hotel_id = l.hotel_id WHERE l.requested_zip = ? ORDER BY h.hotel_id",
+                (zip_code,),
+            ).fetchall()
+            return SavedHotelSearchResponse(
+                search_center=SavedSearchCenter(**dict(context)) if context else None,
+                hotels=[self._saved_hotel(connection, row) for row in rows],
+            )
+
+    def saved_hotel_ids(self, place_ids: List[str]) -> List[str]:
+        """Check identity globally, even if saved under a different ZIP."""
+        if not place_ids:
+            return []
+        placeholders = ", ".join("?" for _ in place_ids)
+        with self.open() as connection:
+            rows = connection.execute(
+                f"SELECT hotel_id FROM saved_hotels WHERE hotel_id IN ({placeholders}) ORDER BY hotel_id",
+                tuple(place_ids),
+            ).fetchall()
+        return [row["hotel_id"] for row in rows]
+
+    def delete_saved_hotel(self, place_id: str) -> None:
+        """Atomically remove one saved identity, all its ZIP contexts and nights."""
+        with self.open() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute("DELETE FROM saved_hotel_locations WHERE hotel_id = ?", (place_id,))
+            connection.execute("DELETE FROM demo_hotel_nights WHERE hotel_id = ?", (place_id,))
+            cursor = connection.execute("DELETE FROM saved_hotels WHERE hotel_id = ?", (place_id,))
+            if cursor.rowcount == 0:
+                raise KeyError(place_id)

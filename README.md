@@ -94,6 +94,8 @@ The separate Assignment 2 backend endpoint `GET /api/live-hotels?zip=16801` retu
 
 On first use, the backend creates the ignored local database `backend/expedia.sqlite3` and imports the four read-only CSV files. Later CRUD changes persist in SQLite and do not alter the CSVs. Delete the local database only if you intentionally want to recreate it from the CSVs; this loses local database changes.
 
+Assignment 2 Part 2 adds `saved_hotels`, `demo_hotel_nights`, and separate ZIP/location associations through repeatable database initialization. `POST /api/saved-hotels` saves a hotel/context and missing demo nights for October 10–14, 2026; `GET /api/saved-hotels?zip=<ZIP>` retrieves local matches. Status is checked by provider ID, and `DELETE /api/saved-hotels?place_id=<ID>` removes a hotel, its associations, and nights together. Repeated saves preserve existing rates/rooms. Defaults of $100.00 and 20 rooms are fictional classroom data, not provider information. See the [schema, API, and View contracts](docs/assignment2-part2-schema.md) for details.
+
 Backend checks:
 
 ```powershell
@@ -122,6 +124,8 @@ npm run build
 ```
 
 The frontend defaults to the FastAPI service at `http://127.0.0.1:8000`; `VITE_API_BASE_URL` can override that backend address when starting Vite. Live Hotel Search accepts a five-digit ZIP string and keeps the hotel list and Leaflet markers synchronized. OpenStreetMap supplies public map tiles, with its attribution visible; no Geoapify key is needed in Vue. The separate Local demo bookings section retains hotel-name search and SQLite booking behavior. See `docs/mvc-contracts.md` for the original API and `docs/assignment2-part1-contracts.md` for live-search contracts. Treat `backend/data/*.csv` as read-only instructor data throughout development.
+
+ZIP lookup now checks saved hotels first; only an empty local success calls the unchanged Part 1 API. Results are labelled **Saved locally** or **API results**. Add/Remove buttons reflect database status after a search, including after refresh. Local nightly values are dated and labelled **Simulated classroom data**; saved results are not a complete list of nearby hotels. Frontend HTTP checks: `node --test frontend/tests/local-hotels.test.js` from the project root.
 
 ## Assignment 2, Part 1 evidence
 
