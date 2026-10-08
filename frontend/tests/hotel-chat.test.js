@@ -25,6 +25,7 @@ async function renderHotel(state) {
   const { descriptor } = parse(readFileSync(new URL('../src/components/ChatAssistant.vue', import.meta.url), 'utf8'))
   const app = createSSRApp({ template: descriptor.template.content, setup: () => ({
     hotel: state, pretty: value => JSON.stringify(value, null, 2),
+    widgetOpen: true, toggleWidget() {}, closeWidget() {},
     question: '', messages: [], pending: false, errorMessage: '',
     askHotelQuestion() {}, newHotelChat() {}, reloadHotelHistory() {}, ask() {}, clearChat() {},
   }) })

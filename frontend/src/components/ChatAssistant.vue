@@ -14,6 +14,25 @@ const hotel = reactive(createHotelChatState())
 const hotelInput = ref(null)
 let hotelRequest
 const pretty = value => JSON.stringify(value, null, 2)
+const widgetOpen = ref(false)
+const chatLauncher = ref(null)
+const chatCloseButton = ref(null)
+
+async function toggleWidget() {
+  if (widgetOpen.value) {
+    await closeWidget()
+    return
+  }
+  widgetOpen.value = true
+  await nextTick()
+  if (widgetOpen.value) chatCloseButton.value?.focus()
+}
+
+async function closeWidget() {
+  widgetOpen.value = false
+  await nextTick()
+  if (!widgetOpen.value) chatLauncher.value?.focus()
+}
 
 function browserStorage() {
   try { return window.localStorage } catch { return null }
@@ -29,7 +48,7 @@ async function askHotelQuestion() {
     clearTimeout(timeout)
     hotelRequest = null
     await nextTick()
-    hotelInput.value?.focus()
+    if (widgetOpen.value) hotelInput.value?.focus()
   }
 }
 
@@ -46,7 +65,7 @@ async function reloadHotelHistory() {
 
 function newHotelChat() {
   newHotelConversation(hotel, props.apiBaseUrl, browserStorage())
-  hotelInput.value?.focus()
+  if (widgetOpen.value) hotelInput.value?.focus()
 }
 
 onMounted(reloadHotelHistory)
@@ -88,22 +107,34 @@ async function ask() {
     activeRequest = null
     pending.value = false
     await nextTick()
-    questionInput.value?.focus()
+    if (widgetOpen.value) questionInput.value?.focus()
   }
 }
 
 function clearChat() {
   messages.value = []
   errorMessage.value = ''
-  questionInput.value?.focus()
+  if (widgetOpen.value) questionInput.value?.focus()
 }
 
 onBeforeUnmount(() => { activeRequest?.abort(); hotelRequest?.abort() })
 </script>
 
 <template>
-  <section class="content-section chat-panel" aria-labelledby="chat-title">
-    <h2 id="chat-title">Saved hotel assistant</h2>
+  <button ref="chatLauncher" type="button" class="chat-launcher"
+    :aria-label="widgetOpen ? 'Hide hotel chat' : 'Open hotel chat'"
+    :aria-expanded="widgetOpen" aria-controls="hotel-chat-widget" aria-haspopup="dialog"
+    @click="toggleWidget">Chat</button>
+  <Transition name="chat-widget">
+  <section v-show="widgetOpen" id="hotel-chat-widget" class="chat-panel chat-widget"
+    role="dialog" aria-labelledby="chat-title" :aria-hidden="!widgetOpen" :inert="!widgetOpen"
+    @keydown.esc.stop.prevent="closeWidget">
+    <header class="chat-widget-header">
+      <h2 id="chat-title">Saved hotel assistant</h2>
+      <button ref="chatCloseButton" type="button" class="chat-close" aria-label="Close hotel chat"
+        @click="closeWidget">Close</button>
+    </header>
+    <div class="chat-widget-body">
     <p class="chat-note">Answers use saved local records. Rates and room availability are simulated classroom data.</p>
     <p v-if="hotel.conversationId" class="chat-note">Conversation ID: {{ hotel.conversationId }}</p>
     <p v-if="hotel.restoring" role="status">Loading saved conversation…</p>
@@ -177,5 +208,7 @@ onBeforeUnmount(() => { activeRequest?.abort(); hotelRequest?.abort() })
       </div>
     </form>
     </details>
+    </div>
   </section>
+  </Transition>
 </template>
