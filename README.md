@@ -127,6 +127,12 @@ The frontend defaults to the FastAPI service at `http://127.0.0.1:8000`; `VITE_A
 
 ZIP lookup now checks saved hotels first; only an empty local success calls the unchanged Part 1 API. Results are labelled **Saved locally** or **API results**. Add/Remove buttons reflect database status after a search, including after refresh. Local nightly values are dated and labelled **Simulated classroom data**; saved results are not a complete list of nearby hotels. Frontend HTTP checks: `node --test frontend/tests/local-hotels.test.js` from the project root.
 
+## OpenAI chat connection
+
+The AI Chat section calls `POST /api/chat` and displays streamed replies. Set `OPENAI_API_KEY` locally in ignored `backend/.env` or the backend process environment. Optional `OPENAI_MODEL` defaults to `gpt-5.6-luna`, matching the supplied reference. The key stays server-side; Vue sends only conversation messages. Environment-file changes apply on the next request; restart the backend after changing Python source or process environment. This uses the existing `httpx` dependency, with no new installation. Chat history stays in memory and clears on refresh.
+
+This stage provides general chat; local hotel records and the planned SQL/RAG workflow are not connected yet. See [the chat contract](docs/chat-contract.md). Run all frontend HTTP tests with `node --test frontend/tests/*.test.js` and backend checks with `backend/.venv/bin/python -m pytest backend/tests`.
+
 ## Assignment 2, Part 1 evidence
 
 The implementation and final simplified interface were verified on September 30, 2026: live `16801`, leading-zero `02108`, invalid `1234`, both selection directions, and the original `Harbor Lantern Hotel` search passed. Frontend lint/build and all 40 backend tests passed. Empty, unresolved, service-failure, and rate-limit cases were checked with mocks; counts are live observations, not fixed test expectations.

@@ -20,12 +20,14 @@ body {
 
 button,
 input,
+textarea,
 select {
   font: inherit;
 }
 
 button:focus-visible,
 input:focus-visible,
+textarea:focus-visible,
 select:focus-visible {
   outline: 3px solid #245ea8;
   outline-offset: 2px;
@@ -45,6 +47,64 @@ button:disabled {
   width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
   padding: 24px 0 48px;
+}
+
+.chat-note {
+  color: #59657b;
+  font-size: 0.875rem;
+}
+
+.chat-messages {
+  display: grid;
+  gap: 12px;
+  max-height: 380px;
+  overflow-y: auto;
+  margin: 16px 0;
+}
+
+.chat-message {
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+}
+
+.chat-user {
+  background: #f7f7f7;
+}
+
+.chat-message p {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.chat-form label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.chat-form textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #8a94a6;
+  border-radius: 4px;
+  resize: vertical;
+}
+
+.chat-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.chat-actions button {
+  padding: 9px 16px;
+  border: 1px solid #8a94a6;
+  border-radius: 4px;
+  background: #f1f1f1;
+  color: #17233c;
 }
 
 .search-panel {

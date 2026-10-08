@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import LiveHotelSearch from './components/LiveHotelSearch.vue'
+import ChatAssistant from './components/ChatAssistant.vue'
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
 
@@ -254,6 +255,7 @@ onMounted(() => loadBookingHistory(false))
 <template>
   <main class="page-shell">
     <LiveHotelSearch :api-base-url="apiBaseUrl" />
+    <ChatAssistant :api-base-url="apiBaseUrl" />
 
     <section class="search-panel local-search-panel" aria-labelledby="page-title">
       <div class="heading-block">

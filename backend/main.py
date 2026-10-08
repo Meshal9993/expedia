@@ -5,7 +5,10 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
+
+from backend.controllers.chat import ChatConfigurationError, ChatController
+from backend.models.chat import ChatRequest
 
 from backend.controllers.booking import (
     BookingController,
@@ -63,6 +66,10 @@ def get_location_controller() -> LocationController:
     return LocationController()
 
 
+def get_chat_controller() -> ChatController:
+    return ChatController()
+
+
 def get_saved_hotel_controller(
     database: DatabaseController = Depends(get_database),
 ) -> SavedHotelController:
@@ -102,6 +109,25 @@ def saved_hotel_not_found_handler(_, __) -> JSONResponse:
 @app.exception_handler(BookingReferenceError)
 def booking_reference_handler(_, error: BookingReferenceError) -> JSONResponse:
     return JSONResponse(status_code=404, content={"detail": str(error)})
+
+
+@app.exception_handler(ChatConfigurationError)
+def chat_configuration_handler(_, __) -> JSONResponse:
+    return JSONResponse(status_code=503, content={"detail": "Chat service is not configured."})
+
+
+@app.post("/api/chat")
+async def chat(
+    request: ChatRequest,
+    controller: ChatController = Depends(get_chat_controller),
+) -> StreamingResponse:
+    controller.ensure_configured()
+
+    async def events():
+        async for event in controller.stream_reply(request):
+            yield event.model_dump_json(exclude_none=True) + "\n"
+
+    return StreamingResponse(events(), media_type="application/x-ndjson", headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/hotels")

@@ -1,5 +1,13 @@
 # Current handoff
 
+## Assignment 2, Part 2: first OpenAI chat connection
+
+October 6, 2026, on `rag_integration`: added general chat through Vue → `POST /api/chat` → `ChatController` → OpenAI Responses, using existing `httpx` and the supplied `gpt-5.6-luna`. Configuration stays in ignored `backend/.env`; no new dependencies were installed. The local-storage checkpoint is preserved in `3de2f9867aa37913c62dc519f7750599ba6f0b1f`, with the earlier RAG planning documents in `9679d0dc7b7d001c4277dfa1e122999a773b622e`.
+
+Checks: 105 backend tests and 16 frontend HTTP workflow tests passed; installed lint tools and the Vite production build passed; `git diff --check` passed. Browser checks covered mocked streaming, follow-up history, keyboard submission, quota feedback, saved ZIP `16801` with map selection, and Assignment 1's two Harbor Lantern stays. Temporary chat mocks are restored to normal provider behavior after verification.
+
+Live model access succeeded, but response generation returned `credit_balance_exhausted`. No real reply was generated; the UI maps this to a safe quota message. API credits are needed before live reply verification. Chat does not yet retrieve local records or implement SQL validation/two-request RAG. See [the chat contract](../docs/chat-contract.md). These integration changes are uncommitted and unpushed.
+
 ## Assignment 2, Part 1: complete and published
 
 Final evidence verification: **September 30, 2026**, on `feature/assignment2-part1-live-hotels`. The assessed implementation commit is `85d0ac345a451267742c456a3d1ee70e524e3f72`, merged into `main` and pushed on both branches to [Meshal9993/expedia](https://github.com/Meshal9993/expedia). The [final report](../report.md) was added and pushed to `main` in the separate report-only commit `49962a4f0b4d4d368233cfa851f65d470b2881b8`. Local URLs are frontend `http://127.0.0.1:5173/` and backend `http://127.0.0.1:8000`.

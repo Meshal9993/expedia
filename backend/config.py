@@ -26,3 +26,31 @@ def get_geoapify_api_key() -> str | None:
     except (OSError, UnicodeError):
         return None
     return None
+
+
+def _openai_setting(name: str) -> str | None:
+    """Read OpenAI settings without changing the existing Geoapify loader."""
+    value = os.environ.get(name, "").strip()
+    if value:
+        return value
+    try:
+        with BACKEND_ENV_PATH.open(encoding="utf-8") as environment_file:
+            for line in environment_file:
+                setting, separator, raw_value = line.partition("=")
+                if separator and setting.strip().removeprefix("export ").strip() == name:
+                    value = raw_value.strip()
+                    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+                        value = value[1:-1].strip()
+                    return value or None
+    except (OSError, UnicodeError):
+        pass
+    return None
+
+
+def get_openai_api_key() -> str | None:
+    value = _openai_setting("OPENAI_API_KEY")
+    return value if value and value != "your_key_here" else None
+
+
+def get_openai_model() -> str:
+    return _openai_setting("OPENAI_MODEL") or "gpt-5.6-luna"

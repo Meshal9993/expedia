@@ -1,6 +1,6 @@
 # Assignment 2 Part 2: RAG planning
 
-Inspection date: October 5, 2026. This is a plan only; no chatbot is implemented and no new dependencies are installed.
+Inspection date: October 5, 2026. Updated October 6: general OpenAI chat is connected as a first step; the RAG workflow below remains a plan. No new dependencies were installed.
 
 ## Revised workflow
 
@@ -23,4 +23,4 @@ Retrieval uses the existing `saved_hotels`, `saved_hotel_locations`, and `demo_h
 
 ## Current readiness
 
-Local save/remove, ZIP associations, dated demo nights, and local-first lookup exist and pass automated checks. `httpx==0.28.1` is already declared; Python `sqlite3` is available. The existing environment helper handles Geoapify only. No LLM client, chatbot, or generated-SQL validator was found. LLM provider/model selection, configuration, and any dependency review/approval remain future work.
+Local save/remove, ZIP associations, dated demo nights, and local-first lookup exist and pass automated checks. `httpx==0.28.1` and Python `sqlite3` are available. General OpenAI Responses chat now uses `httpx`, backend-only configuration, and the supplied `gpt-5.6-luna` model; see [the chat contract](chat-contract.md). SQL validation, local retrieval, and the second grounded-answer request remain future work.
