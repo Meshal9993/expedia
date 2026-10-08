@@ -1,12 +1,22 @@
 # Current handoff
 
+## Assignment 2, Part 2: revised OpenAI RAG implementation
+
+October 8, 2026, on `rag_integration`, based on basic chatbot checkpoint `4447dd72ff975cd9cfd525448969999fe52363aa`. The class foundation is OpenAI; no OpenRouter replacement or new dependency was added. Basic `/api/chat`, Assignment 1, and Part 1/local-storage APIs remain intact.
+
+Added hotel prompt/DTOs, `POST /api/hotel-chat`, two Responses stages, restricted read-only SQL retrieval, and separate persistent conversation/event stages. Vue shows answer/status/trace and restores the browser's conversation ID from backend history. Generated SQL cannot access history or course booking/user tables. Multi-night totals/coverage use required nightly rows, exclude checkout, and label rates/rooms simulated classroom data.
+
+The fixed fixture and [context example](../docs/assignment2-part2-rag-context.md) are explicitly mocked/test evidence. Tests use temporary databases; the real course database is not replaced. No live OpenAI RAG call, commit, or push was performed in this implementation step. Next: review, restart the project, verify model access/credits, then authorize a live RAG demonstration and record its real conversation ID.
+
+Final checks: 158 backend tests and 24 frontend tests passed; frontend lint/build and `git diff --check` passed. Backend tests reported one existing Starlette/httpx deprecation warning. npm is unavailable in the current shell, so the existing Node runtime ran the installed lint/build CLIs directly. Credential review found no keys in the tracked diff or new files; `backend/.env` is ignored and untracked. The output-limit edge case was corrected to show insufficient data when no complete record fits.
+
 ## Assignment 2, Part 2: first OpenAI chat connection
 
 October 6, 2026, on `rag_integration`: added general chat through Vue → `POST /api/chat` → `ChatController` → OpenAI Responses, using existing `httpx` and the supplied `gpt-5.6-luna`. Configuration stays in ignored `backend/.env`; no new dependencies were installed. The local-storage checkpoint is preserved in `3de2f9867aa37913c62dc519f7750599ba6f0b1f`, with the earlier RAG planning documents in `9679d0dc7b7d001c4277dfa1e122999a773b622e`.
 
 Checks: 105 backend tests and 16 frontend HTTP workflow tests passed; installed lint tools and the Vite production build passed; `git diff --check` passed. Browser checks covered mocked streaming, follow-up history, keyboard submission, quota feedback, saved ZIP `16801` with map selection, and Assignment 1's two Harbor Lantern stays. Temporary chat mocks are restored to normal provider behavior after verification.
 
-Live model access succeeded, but response generation returned `credit_balance_exhausted`. No real reply was generated; the UI maps this to a safe quota message. API credits are needed before live reply verification. Chat does not yet retrieve local records or implement SQL validation/two-request RAG. See [the chat contract](../docs/chat-contract.md). These integration changes are uncommitted and unpushed.
+The October 6 basic live request returned `credit_balance_exhausted`; no real reply was generated. This is historical evidence, not a current credit check. That basic step did not retrieve records or implement RAG. It was saved in checkpoint `4447dd72ff975cd9cfd525448969999fe52363aa` and remains unpushed. See [contracts](../docs/chat-contract.md).
 
 ## Assignment 2, Part 1: complete and published
 

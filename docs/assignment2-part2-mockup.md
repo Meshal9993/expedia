@@ -1,25 +1,31 @@
-# Assignment 2 Part 2: early chatbot mockup
+# Assignment 2 Part 2: chatbot mockup
 
-Planning only; this interface is not implemented. It may change after the MVC/API contracts are agreed.
+Early layout retained and updated October 8, 2026 to match the implemented simple View.
 
 ```text
 -----------------------------------------------------------
 Booking — Ask about saved hotels
 Answers use local records and simulated classroom rates/rooms.
+Conversation ID: [saved backend ID]
 
 Question
-[ Which saved hotels have rooms on October 12, 2026? ] [ Ask ]
+[ Which saved hotels in 02108 have rooms Oct 10–13? ] [ Ask ]
+[ New conversation ] [ Reload history ]
 
 Status: Loading... (Ask disabled while a request is pending)
 -----------------------------------------------------------
 Answer
 [ Answer grounded in the retrieved local records           ]
 
-Matched hotel/date information (optional)
-Hotel name or "Name unavailable" | Date | Demo rate | Rooms
+[ Expand RAG Trace ]
+Proposed SQL / Executed SQL / Parameters
+Retrieved hotel/date records
+Required-night checks and per-room totals in cents
+-----------------------------------------------------------
+[ Expand basic chat — preserved class checkpoint ]
 -----------------------------------------------------------
 ```
 
-Planned states: idle, loading, answer, no matches, insufficient data, rejected query, and service failure. For example: "No saved hotel/date records match this question" or "The stored data cannot answer that question."
+States: idle, loading, answer, no matches, insufficient data, rejected query, service failure, and history-load failure. Empty successful retrieval differs from a failed/rejected query. Incomplete turns and truncated history are labelled.
 
-Show the simulated-data label beside rates and room counts. Keep a labelled text input, keyboard focus, and accessible status feedback. Existing ZIP search, local Add/Remove controls, and list/map selection stay intact. No API key or raw provider error appears in the View.
+The View uses labelled text inputs, native expandable details, keyboard focus, status messages, and escaped plain text. SQLite stores messages/traces; browser storage holds only the conversation ID. New conversation clears the browser reference, not saved history. ZIP search, Add/Remove, and list/map stay intact. No API key or raw provider error appears in the View.

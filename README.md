@@ -55,7 +55,7 @@ The development environments are kept separate. Python dependencies belong only 
 
 ### Backend
 
-Python 3.10 or newer is required. From the project root on Windows PowerShell:
+Python 3.11 or newer is required (RAG uses asyncio timeout support). From the project root on Windows PowerShell:
 
 ```powershell
 python -m venv backend/.venv
@@ -131,7 +131,13 @@ ZIP lookup now checks saved hotels first; only an empty local success calls the 
 
 The AI Chat section calls `POST /api/chat` and displays streamed replies. Set `OPENAI_API_KEY` locally in ignored `backend/.env` or the backend process environment. Optional `OPENAI_MODEL` defaults to `gpt-5.6-luna`, matching the supplied reference. The key stays server-side; Vue sends only conversation messages. Environment-file changes apply on the next request; restart the backend after changing Python source or process environment. This uses the existing `httpx` dependency, with no new installation. Chat history stays in memory and clears on refresh.
 
-This stage provides general chat; local hotel records and the planned SQL/RAG workflow are not connected yet. See [the chat contract](docs/chat-contract.md). Run all frontend HTTP tests with `node --test frontend/tests/*.test.js` and backend checks with `backend/.venv/bin/python -m pytest backend/tests`.
+Basic chat remains available in the expandable class-checkpoint section and keeps successful turns in memory.
+
+The Saved hotel assistant calls `POST /api/hotel-chat`. OpenAI first proposes SQL/parameters; the backend validates and retrieves bounded local rows read-only; the second request receives the original question and evidence. The View shows an answer and expandable RAG Trace. Include ZIP/dates explicitly, for example `Which saved hotels in ZIP 02108 have rooms from 2026-10-10 to 2026-10-13?` Checkout is excluded. Rates/rooms are simulated classroom data; totals are per room. Missing nights mean unknown availability.
+
+Repeatable initialization adds conversation/event tables without reseeding existing course records. SQLite saves the trace; browser storage keeps only a conversation ID, restored through `GET /api/hotel-chat/{conversation_id}`. New conversation retains old backend history. `prompts/hotel-assistant.md` is read per request and hashed in the trace. Restart the backend after Python changes; restart Vue after changing its startup environment.
+
+No new packages are needed and no live OpenAI RAG request has been made. See [contracts](docs/chat-contract.md), [the fixed fictional fixture](docs/assignment2-part2-rag-fixture.json), and [mocked context](docs/assignment2-part2-rag-context.md). Run all frontend tests with `node --test frontend/tests/*.test.js` and backend checks with `backend/.venv/bin/python -m pytest backend/tests`.
 
 ## Assignment 2, Part 1 evidence
 

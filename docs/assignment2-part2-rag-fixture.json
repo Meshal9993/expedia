@@ -1,0 +1,50 @@
+{
+  "label": "Deterministic test/verification fixture. Fictional hotels and simulated classroom nights; not live provider data. Use temporary databases only.",
+  "hotels": [
+    {
+      "hotel_id": "fixture-alpha",
+      "name": "Fixture Alpha Hotel",
+      "address": "Example address A",
+      "latitude": 42.36,
+      "longitude": -71.06,
+      "location": {"requested_zip": "02108", "resolved_postcode": "02108", "city": "Boston", "state": "MA", "latitude": 42.357, "longitude": -71.065},
+      "nights": [
+        {"stay_date": "2026-10-10", "nightly_rate_cents": 10000, "rooms_available": 20},
+        {"stay_date": "2026-10-11", "nightly_rate_cents": 12000, "rooms_available": 3},
+        {"stay_date": "2026-10-12", "nightly_rate_cents": 9000, "rooms_available": 5},
+        {"stay_date": "2026-10-13", "nightly_rate_cents": 1111, "rooms_available": 0}
+      ]
+    },
+    {
+      "hotel_id": "fixture-missing-night",
+      "name": null,
+      "address": null,
+      "latitude": 42.361,
+      "longitude": -71.061,
+      "location": {"requested_zip": "02108", "resolved_postcode": "02108", "city": "Boston", "state": "MA", "latitude": 42.357, "longitude": -71.065},
+      "nights": [
+        {"stay_date": "2026-10-10", "nightly_rate_cents": 10000, "rooms_available": 20},
+        {"stay_date": "2026-10-12", "nightly_rate_cents": 10000, "rooms_available": 0}
+      ]
+    },
+    {
+      "hotel_id": "fixture-pennsylvania",
+      "name": "Fixture Pennsylvania Hotel",
+      "address": "Example address C",
+      "latitude": 40.79,
+      "longitude": -77.86,
+      "location": {"requested_zip": "16801", "resolved_postcode": "16801", "city": "State College", "state": "PA", "latitude": 40.79, "longitude": -77.86},
+      "nights": [{"stay_date": "2026-10-10", "nightly_rate_cents": 8000, "rooms_available": 20}]
+    }
+  ],
+  "checks": {
+    "successful_hotel": "fixture-alpha",
+    "check_in": "2026-10-10",
+    "check_out_excluded": "2026-10-13",
+    "required_nights": 3,
+    "expected_total_rate_cents": 31000,
+    "missing_hotel": "fixture-missing-night",
+    "missing_date": "2026-10-11",
+    "no_match_zip": "99999"
+  }
+}

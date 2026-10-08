@@ -1,5 +1,6 @@
-"""OpenAI Responses transport. Local-record RAG is a separate next step."""
+"""OpenAI Responses transport shared by basic chat and local hotel RAG."""
 
+import asyncio
 import json
 from contextlib import AsyncExitStack
 from time import monotonic
@@ -27,6 +28,13 @@ class ChatConfigurationError(Exception):
     """A required backend setting is missing."""
 
 
+class ChatModelError(Exception):
+    """Safe model failure code; never retains provider response/error text."""
+
+    def __init__(self, code="unavailable"):
+        self.code = code
+
+
 class ChatController:
     def __init__(self, client: httpx.AsyncClient | None = None,
                  api_key: str | None = None, model: str | None = None):
@@ -37,6 +45,47 @@ class ChatController:
     def ensure_configured(self) -> None:
         if not self.api_key or not self.api_key.strip():
             raise ChatConfigurationError
+
+    async def request_output(self, instructions: str, content: str, text_format: dict) -> str:
+        """One bounded Responses request for RAG, reusing this controller's HTTP capability.
+
+        Basic stream_reply remains unchanged. Structured output is validated by its caller.
+        """
+        self.ensure_configured()
+        payload = {
+            "model": self.model, "instructions": instructions,
+            "input": [{"role": "user", "content": content}],
+            "text": {"format": text_format}, "reasoning": {"effort": "low"},
+            "tools": [], "stream": False, "store": False, "max_output_tokens": 4096,
+        }
+        try:
+            async with AsyncExitStack() as stack:
+                client = self.client or await stack.enter_async_context(httpx.AsyncClient())
+                async with asyncio.timeout(50):
+                    response = await client.post(
+                        RESPONSES_URL, json=payload,
+                        headers={"Authorization": f"Bearer {self.api_key}"},
+                        timeout=httpx.Timeout(40, connect=10, write=10, pool=10),
+                    )
+                if response.status_code != 200:
+                    raise ChatModelError({401: "configuration", 403: "configuration",
+                                          429: "limited"}.get(response.status_code, "unavailable"))
+                if len(response.content) > 131072:
+                    raise ChatModelError
+                body = response.json()
+                if body.get("status") != "completed":
+                    raise ChatModelError(self._provider_error(body).code or "incomplete")
+                text = "".join(
+                    part["text"] for item in body.get("output", []) if item.get("type") == "message"
+                    for part in item.get("content", []) if part.get("type") == "output_text"
+                )
+                if not text.strip() or len(text) > 16000 or (self.api_key and self.api_key in text):
+                    raise ChatModelError
+                return text
+        except (httpx.TimeoutException, TimeoutError):
+            raise ChatModelError("timeout") from None
+        except (httpx.HTTPError, ValueError, TypeError, AttributeError, KeyError):
+            raise ChatModelError from None
 
     @staticmethod
     def _provider_error(event: dict) -> ChatEvent:

@@ -1,6 +1,7 @@
 <script setup>
-import { nextTick, onBeforeUnmount, reactive, ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { streamChat } from '../api/chat'
+import { createHotelChatState, newHotelConversation, restoreHotelConversation, submitHotelQuestion } from '../api/hotelChat'
 
 const props = defineProps({ apiBaseUrl: { type: String, required: true } })
 const question = ref('')
@@ -9,6 +10,46 @@ const pending = ref(false)
 const errorMessage = ref('')
 const questionInput = ref(null)
 let activeRequest
+const hotel = reactive(createHotelChatState())
+const hotelInput = ref(null)
+let hotelRequest
+const pretty = value => JSON.stringify(value, null, 2)
+
+function browserStorage() {
+  try { return window.localStorage } catch { return null }
+}
+
+async function askHotelQuestion() {
+  if (hotel.pending || hotel.restoring) return
+  hotelRequest = new AbortController()
+  const timeout = setTimeout(() => hotelRequest?.abort(), 120000)
+  try {
+    await submitHotelQuestion(hotel, props.apiBaseUrl, { storage: browserStorage(), signal: hotelRequest.signal })
+  } finally {
+    clearTimeout(timeout)
+    hotelRequest = null
+    await nextTick()
+    hotelInput.value?.focus()
+  }
+}
+
+async function reloadHotelHistory() {
+  hotelRequest = new AbortController()
+  const timeout = setTimeout(() => hotelRequest?.abort(), 15000)
+  try {
+    await restoreHotelConversation(hotel, props.apiBaseUrl, { storage: browserStorage(), signal: hotelRequest.signal })
+  } finally {
+    clearTimeout(timeout)
+    hotelRequest = null
+  }
+}
+
+function newHotelChat() {
+  newHotelConversation(hotel, props.apiBaseUrl, browserStorage())
+  hotelInput.value?.focus()
+}
+
+onMounted(reloadHotelHistory)
 
 const errors = {
   configuration: 'Chat is not configured. Check the backend OpenAI key and model settings.',
@@ -57,12 +98,61 @@ function clearChat() {
   questionInput.value?.focus()
 }
 
-onBeforeUnmount(() => activeRequest?.abort())
+onBeforeUnmount(() => { activeRequest?.abort(); hotelRequest?.abort() })
 </script>
 
 <template>
   <section class="content-section chat-panel" aria-labelledby="chat-title">
-    <h2 id="chat-title">AI Chat</h2>
+    <h2 id="chat-title">Saved hotel assistant</h2>
+    <p class="chat-note">Answers use saved local records. Rates and room availability are simulated classroom data.</p>
+    <p v-if="hotel.conversationId" class="chat-note">Conversation ID: {{ hotel.conversationId }}</p>
+    <p v-if="hotel.restoring" role="status">Loading saved conversation…</p>
+    <p v-if="hotel.historyTruncated" role="status">Showing recent events. Older history remains saved in the backend.</p>
+    <p v-if="hotel.storageWarning" role="status">{{ hotel.storageWarning }}</p>
+    <div class="chat-messages hotel-chat-messages" :aria-busy="hotel.pending || hotel.restoring" aria-label="Saved hotel conversation">
+      <article v-for="(turn, index) in hotel.turns" :key="index" class="chat-message">
+        <strong>You</strong>
+        <p>{{ turn.question }}</p>
+        <strong>Hotel assistant</strong>
+        <p v-if="turn.state === 'loading'" role="status">Looking up saved hotel records…</p>
+        <p v-if="turn.state === 'no_matches'" role="status">No matching saved records.</p>
+        <p v-if="turn.state === 'insufficient_data'" role="status">Insufficient data for a complete answer.</p>
+        <p v-if="turn.state === 'incomplete'" role="status">This saved turn did not finish.</p>
+        <p v-if="turn.answer">{{ turn.answer }}</p>
+        <p v-if="turn.error" class="error-message" role="alert">{{ turn.error }}</p>
+        <details v-if="turn.trace" class="rag-trace">
+          <summary>RAG Trace</summary>
+          <p><strong>Proposed SQL</strong></p>
+          <pre>{{ turn.trace.proposed_sql || 'No valid query was proposed.' }}</pre>
+          <p><strong>Executed SQL</strong></p>
+          <pre>{{ turn.trace.executed_sql || 'No query was executed.' }}</pre>
+          <p><strong>Parameters</strong></p>
+          <pre>{{ pretty(turn.trace.parameters) }}</pre>
+          <p><strong>Retrieved records — simulated classroom nights</strong></p>
+          <pre>{{ pretty(turn.trace.retrieved_records) }}</pre>
+          <template v-if="turn.trace.stay_assessments?.length">
+            <p><strong>Required-night checks and totals (cents)</strong></p>
+            <pre>{{ pretty(turn.trace.stay_assessments) }}</pre>
+          </template>
+          <p v-if="turn.trace.truncated">Retrieval was truncated; this is incomplete evidence.</p>
+        </details>
+      </article>
+    </div>
+    <p v-if="hotel.error && !hotel.turns.some(turn => turn.error === hotel.error)" class="error-message" role="alert">{{ hotel.error }}</p>
+    <form class="chat-form" @submit.prevent="askHotelQuestion">
+      <label for="hotel-question">Question about saved hotels</label>
+      <textarea id="hotel-question" ref="hotelInput" v-model="hotel.question" rows="3" maxlength="4000"
+        placeholder="Which saved hotels in 02108 have rooms from 2026-10-10 to 2026-10-13?"
+        :disabled="hotel.pending || hotel.restoring" required />
+      <div class="chat-actions">
+        <button type="submit" :disabled="hotel.pending || hotel.restoring || !hotel.question.trim()">{{ hotel.pending ? 'Asking…' : 'Ask' }}</button>
+        <button type="button" :disabled="hotel.pending || hotel.restoring" @click="newHotelChat">New conversation</button>
+        <button v-if="hotel.conversationId" type="button" :disabled="hotel.pending || hotel.restoring" @click="reloadHotelHistory">Reload history</button>
+      </div>
+    </form>
+
+    <details class="basic-chat">
+    <summary>Basic chat — class checkpoint</summary>
     <p class="chat-note">General chat with OpenAI. Saved hotel records are not connected to this chat yet.</p>
 
     <div v-if="messages.length" class="chat-messages" aria-label="Chat conversation" :aria-busy="pending">
@@ -86,5 +176,6 @@ onBeforeUnmount(() => activeRequest?.abort())
         <button type="button" class="secondary-action" :disabled="pending || !messages.length" @click="clearChat">Clear chat</button>
       </div>
     </form>
+    </details>
   </section>
 </template>

@@ -1,12 +1,24 @@
 """SQLite persistence for instructor entities and separate classroom hotel data."""
 
 import csv
+import json
 import sqlite3
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from dataclasses import asdict
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
+from time import monotonic
 from typing import Iterator, List
+from uuid import UUID, uuid4
+
+from backend.controllers.hotel_sql import (
+    HOTEL_COLUMNS, OUTPUT_LIMIT, QUERY_SECONDS, ROW_LIMIT, SAFE_FUNCTIONS,
+    HotelRetrievalError, RejectedHotelSql, validate_hotel_sql,
+)
+from backend.models.hotel_chat import (
+    ChatConversation, ChatEventWrite, ChatHistory, ChatHistoryEvent, ChatPromptMetadata,
+    HotelRetrieval, SqlProposal,
+)
 
 from backend.models.entities import Booking, Hotel, HotelStay, Trip, User
 from backend.models.saved_hotels import (
@@ -18,6 +30,7 @@ from backend.models.saved_hotels import (
 Entity = Hotel | Trip | User | Booking
 EntityType = type[Hotel] | type[Trip] | type[User] | type[Booking]
 DATA_DIRECTORY = Path(__file__).resolve().parents[1] / "data"
+QUERY_PROGRESS_INTERVAL = 1000
 
 # Whitelisted table and column names; only values are supplied to SQL at runtime.
 TABLES: dict[EntityType, tuple[str, str, tuple[str, ...]]] = {
@@ -134,6 +147,27 @@ class DatabaseController:
                     longitude REAL NOT NULL CHECK (longitude BETWEEN -180 AND 180),
                     PRIMARY KEY (hotel_id, requested_zip)
                 );
+                -- Application-controlled chat history; never allowed in generated SQL.
+                CREATE TABLE IF NOT EXISTS chat_conversations (
+                    conversation_id TEXT PRIMARY KEY,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    prompt_hash TEXT NOT NULL,
+                    prompt_version TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS chat_events (
+                    event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    conversation_id TEXT NOT NULL REFERENCES chat_conversations(conversation_id),
+                    turn_id TEXT NOT NULL,
+                    timestamp TEXT NOT NULL,
+                    stage TEXT NOT NULL CHECK (stage IN (
+                        'user', 'proposed_sql', 'executed_sql', 'retrieval_result',
+                        'retrieval_error', 'model_error', 'assistant'
+                    )),
+                    content TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS chat_events_conversation
+                    ON chat_events(conversation_id, event_id);
                 """
             )
             seeded = connection.execute(
@@ -343,3 +377,113 @@ class DatabaseController:
             cursor = connection.execute("DELETE FROM saved_hotels WHERE hotel_id = ?", (place_id,))
             if cursor.rowcount == 0:
                 raise KeyError(place_id)
+
+    def retrieve_hotel_records(self, proposal: SqlProposal) -> HotelRetrieval:
+        """Validate and run bounded untrusted SELECT through a separate read-only connection.
+
+        Generated SQL cannot access CRUD/history tables or functions outside the policy.
+        No initialization, commits, or schema writes take place on this connection.
+        """
+        sql = validate_hotel_sql(proposal)
+        executed_sql = f"SELECT * FROM ({sql}) AS rag_rows LIMIT {ROW_LIMIT + 1}"
+        deadline = monotonic() + QUERY_SECONDS
+        denied = False
+
+        def authorize(action, table, column, database, source):
+            nonlocal denied
+            allowed = action == sqlite3.SQLITE_SELECT
+            if action == sqlite3.SQLITE_READ:
+                # SQLite reports an empty-column cardinality read with database=None
+                # for an approved joined table whose individual columns are unused.
+                allowed = (source is None and (table or "").lower() in HOTEL_COLUMNS
+                           and (database == "main" and (column or "").lower() in HOTEL_COLUMNS[table.lower()]
+                                or database in (None, "main") and column == ""))
+            if action == sqlite3.SQLITE_FUNCTION:
+                allowed = (column or "").lower() in SAFE_FUNCTIONS
+            if not allowed:
+                denied = True
+            return sqlite3.SQLITE_OK if allowed else sqlite3.SQLITE_DENY
+
+        try:
+            with closing(sqlite3.connect(self.path.resolve().as_uri() + "?mode=ro", uri=True,
+                                         timeout=0.25)) as connection:
+                connection.row_factory = sqlite3.Row
+                connection.execute("PRAGMA query_only = ON")
+                connection.setlimit(sqlite3.SQLITE_LIMIT_SQL_LENGTH, 10000)
+                connection.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, 65536)
+                connection.set_authorizer(authorize)
+                connection.set_progress_handler(lambda: int(monotonic() > deadline), QUERY_PROGRESS_INTERVAL)
+                try:
+                    if monotonic() > deadline:
+                        raise HotelRetrievalError(executed_sql)
+                    rows = connection.execute(executed_sql, tuple(proposal.parameters)).fetchmany(ROW_LIMIT + 1)
+                    records = []
+                    truncated = len(rows) > ROW_LIMIT
+                    for row in rows[:ROW_LIMIT]:
+                        candidate = dict(row)
+                        if len(json.dumps(records + [candidate], ensure_ascii=False).encode()) > OUTPUT_LIMIT:
+                            truncated = True
+                            break
+                        records.append(candidate)
+                    return HotelRetrieval(executed_sql=executed_sql, records=records, truncated=truncated)
+                finally:
+                    connection.set_authorizer(None)
+                    connection.set_progress_handler(None, 0)
+        except sqlite3.Error as error:
+            if denied or isinstance(error, sqlite3.ProgrammingError) or error.sqlite_errorcode == sqlite3.SQLITE_ERROR:
+                raise RejectedHotelSql from None
+            raise HotelRetrievalError(executed_sql) from None
+
+    def create_chat_conversation(self, prompt: ChatPromptMetadata) -> ChatConversation:
+        """Create a conversation using application-controlled, parameterized SQL."""
+        timestamp = datetime.now(timezone.utc).isoformat()
+        conversation = ChatConversation(conversation_id=uuid4(), created_at=timestamp,
+                                        updated_at=timestamp, prompt_hash=prompt.prompt_hash,
+                                        prompt_version=prompt.prompt_version)
+        with self.open() as connection:
+            connection.execute(
+                "INSERT INTO chat_conversations VALUES (?, ?, ?, ?, ?)",
+                (str(conversation.conversation_id), timestamp, timestamp, prompt.prompt_hash, prompt.prompt_version),
+            )
+        return conversation
+
+    def append_chat_event(self, event: ChatEventWrite) -> ChatHistoryEvent:
+        """Persist a trace stage independently of the read-only retrieval connection."""
+        timestamp = datetime.now(timezone.utc).isoformat()
+        serialized = json.dumps(event.content, ensure_ascii=False, allow_nan=False)
+        if len(serialized.encode()) > 65536:
+            raise ValueError("Trace stage exceeds its storage bound")
+        with self.open() as connection:
+            cursor = connection.execute(
+                "INSERT INTO chat_events (conversation_id, turn_id, timestamp, stage, content) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (str(event.conversation_id), str(event.turn_id), timestamp, event.stage, serialized),
+            )
+            connection.execute("UPDATE chat_conversations SET updated_at = ? WHERE conversation_id = ?",
+                               (timestamp, str(event.conversation_id)))
+        return ChatHistoryEvent(event_id=cursor.lastrowid, timestamp=timestamp, **event.model_dump())
+
+    def get_chat_history(self, conversation_id: UUID) -> ChatHistory:
+        """Load recent events with an output bound; older stored events are retained."""
+        with self.open() as connection:
+            row = connection.execute("SELECT * FROM chat_conversations WHERE conversation_id = ?",
+                                     (str(conversation_id),)).fetchone()
+            if row is None:
+                raise KeyError(conversation_id)
+            rows = connection.execute(
+                "SELECT * FROM chat_events WHERE conversation_id = ? ORDER BY event_id DESC LIMIT 101",
+                (str(conversation_id),),
+            ).fetchall()
+        events = []
+        byte_count = 0
+        truncated = len(rows) > 100
+        for event in rows[:100]:
+            byte_count += len(event["content"].encode())
+            if byte_count > 524288:
+                truncated = True
+                break
+            values = dict(event)
+            values["content"] = json.loads(values["content"])
+            events.append(ChatHistoryEvent(**values))
+        return ChatHistory(conversation=ChatConversation(**dict(row)), events=list(reversed(events)),
+                           truncated=truncated)

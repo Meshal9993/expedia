@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 from pathlib import Path
+from uuid import UUID
 
 from fastapi import Depends, FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,6 +10,8 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from backend.controllers.chat import ChatConfigurationError, ChatController
 from backend.models.chat import ChatRequest
+from backend.controllers.hotel_chat import HotelChatController, HotelChatError
+from backend.models.hotel_chat import ChatHistory, HotelChatRequest, HotelChatResponse
 
 from backend.controllers.booking import (
     BookingController,
@@ -70,6 +73,13 @@ def get_chat_controller() -> ChatController:
     return ChatController()
 
 
+def get_hotel_chat_controller(
+    database: DatabaseController = Depends(get_database),
+    model: ChatController = Depends(get_chat_controller),
+) -> HotelChatController:
+    return HotelChatController(database, model)
+
+
 def get_saved_hotel_controller(
     database: DatabaseController = Depends(get_database),
 ) -> SavedHotelController:
@@ -128,6 +138,28 @@ async def chat(
             yield event.model_dump_json(exclude_none=True) + "\n"
 
     return StreamingResponse(events(), media_type="application/x-ndjson", headers={"Cache-Control": "no-store"})
+
+
+@app.exception_handler(HotelChatError)
+def hotel_chat_error_handler(_, error: HotelChatError) -> JSONResponse:
+    content = {"code": error.code, "detail": error.detail}
+    if error.conversation_id:
+        content["conversation_id"] = str(error.conversation_id)
+    return JSONResponse(status_code=error.status, content=content, headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/hotel-chat", response_model=HotelChatResponse)
+async def hotel_chat(
+    request: HotelChatRequest, controller: HotelChatController = Depends(get_hotel_chat_controller),
+) -> HotelChatResponse:
+    return await controller.ask(request)
+
+
+@app.get("/api/hotel-chat/{conversation_id}", response_model=ChatHistory)
+def hotel_chat_history(
+    conversation_id: UUID, controller: HotelChatController = Depends(get_hotel_chat_controller),
+) -> ChatHistory:
+    return controller.history(conversation_id)
 
 
 @app.get("/api/hotels")
