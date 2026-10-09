@@ -4,7 +4,7 @@
 
 Repository: https://github.com/Meshal9993/expedia
 
-Final Part 2 commit: **dbdd20f3877e87e3f82769cc97ab1aa597dd299e**
+Final Part 2 commit: dbdd20f3877e87e3f82769cc97ab1aa597dd299e
 
 ## Implementation
 
@@ -25,7 +25,7 @@ The saved hotel was Courtyard by Marriott State College
 
 I asked:
 
-Any saved hotels in ZIP 16801 on 2026-10-14?
+Any saved hotels in ZIP 16801 on 2026-10-11?
 
 Expected: The assistant should use the saved local records and return the matching hotel.
 
@@ -45,7 +45,9 @@ Any saved hotels in ZIP 11111 on 2026-10-11?
 
 Expected: No matching saved hotel should be returned.
 
-Demo video: [Assignment 2 Part 2 Demo](docs/screenshots/assignment2-part2-demo.mov)
+Observed: The assistant returned no matching saved hotel records.
+
+Demo video: https://github.com/Meshal9993/expedia/blob/main/docs/screenshots/assignment2-part2-demo.mov
 
 ## Project context and next steps
 
