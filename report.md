@@ -4,7 +4,7 @@
 
 Repository: https://github.com/Meshal9993/expedia
 
-Part 2 implementation commit: f189c879a50668316b088888069be3848b111772
+Final Part 2 commit: **dbdd20f3877e87e3f82769cc97ab1aa597dd299e**
 
 ## Implementation
 
