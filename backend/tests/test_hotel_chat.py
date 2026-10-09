@@ -11,10 +11,10 @@ from fastapi.testclient import TestClient
 
 from backend.controllers.chat import ChatController
 from backend.controllers.database import DatabaseController
-from backend.controllers.hotel_chat import HotelChatController, assess_stay
+from backend.controllers.hotel_chat import HotelChatController, assess_stay, completed_context
 from backend.controllers.hotel_sql import HotelRetrievalError, RejectedHotelSql
 from backend.main import app, get_hotel_chat_controller
-from backend.models.hotel_chat import HotelChatRequest, SqlProposal
+from backend.models.hotel_chat import ChatEventWrite, HotelChatRequest, SqlClarification, SqlProposal
 from backend.models.saved_hotels import SavedHotel, SavedSearchCenter
 
 
@@ -205,7 +205,7 @@ def test_two_mocked_requests_grounding_trace_and_reopening(database, route):
     history = reopened.get_chat_history(UUID(body["conversation_id"]))
     assert [event.stage for event in history.events] == ["user", "proposed_sql", "executed_sql", "retrieval_result", "assistant"]
     assert history.events[-1].content["answer"] == body["answer"]
-    assert history.conversation.prompt_hash and history.conversation.prompt_version == "hotel-assistant-v1"
+    assert history.conversation.prompt_hash and history.conversation.prompt_version == "hotel-assistant-v2"
     controller = HotelChatController(reopened, ChatController(api_key=""))
     app.dependency_overrides[get_hotel_chat_controller] = lambda: controller
     try:
@@ -310,3 +310,156 @@ def test_unknown_conversation_and_invalid_input(database):
             assert client.post("/api/hotel-chat", json={"question": "Hi", "sql": "SELECT hotel_id FROM saved_hotels"}).status_code == 422
     finally:
         app.dependency_overrides.clear()
+
+
+NIGHT_SQL = (
+    "SELECT h.hotel_id, h.name, l.requested_zip, n.stay_date, n.nightly_rate_cents, n.rooms_available "
+    "FROM saved_hotels h JOIN saved_hotel_locations l ON h.hotel_id = l.hotel_id "
+    "JOIN demo_hotel_nights n ON h.hotel_id = n.hotel_id "
+    "WHERE l.requested_zip = ? AND h.hotel_id = ? AND n.stay_date = ?"
+)
+AMBIGUOUS_COST_SQL = (
+    "SELECT hotel_id, name, nightly_rate_cents FROM saved_hotels JOIN demo_hotel_nights "
+    "ON saved_hotels.hotel_id = demo_hotel_nights.hotel_id"
+)
+
+
+def test_room_cost_follow_up_uses_saved_context_and_fresh_nightly_records(database):
+    calls = []
+    query = {"sql": NIGHT_SQL, "parameters": ["02108", "fixture-alpha", "2026-10-11"], "stay": None}
+
+    def provider(request):
+        payload = json.loads(request.content)
+        content = json.loads(payload["input"][0]["content"])
+        calls.append(content)
+        if payload["text"]["format"]["name"] == "hotel_sql":
+            if content["question"] == "how much is the room cost?" and not content.get("conversation_context"):
+                # Reproduce the actual ambiguous query when history is not sent.
+                return model_response({"sql": AMBIGUOUS_COST_SQL, "parameters": [], "stay": None})
+            return model_response(query)
+        rate = content["retrieved_records"][0]["nightly_rate_cents"] / 100
+        return model_response({"answer": f"Fixture Alpha Hotel costs ${rate:.2f} on 2026-10-11 in ZIP 02108.",
+                               "hotel_ids": ["fixture-alpha"]})
+
+    async def conversation():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(provider)) as client:
+            model = ChatController(client=client, api_key=KEY)
+            controller = HotelChatController(database, model)
+            first = await controller.ask(HotelChatRequest(
+                question="Show fixture-alpha in ZIP 02108 for the night of 2026-10-11."))
+            # Change only this temporary fixture to prove the answer is freshly retrieved.
+            with database.open() as connection:
+                connection.execute("UPDATE demo_hotel_nights SET nightly_rate_cents = ? "
+                                   "WHERE hotel_id = ? AND stay_date = ?", (12500, "fixture-alpha", "2026-10-11"))
+            # Use a reopened controller as after a backend restart.
+            reopened = HotelChatController(DatabaseController(database.path), model)
+            follow_up = await reopened.ask(HotelChatRequest(
+                question="how much is the room cost?", conversation_id=first.conversation_id))
+            return first, follow_up
+
+    first, follow_up = asyncio.run(conversation())
+    context = calls[2]["conversation_context"]
+    assert context[0]["question"] == first.question
+    assert context[0]["answer"] == first.answer
+    assert context[0]["retrieved_records"] == first.retrieved_records
+    assert context[0]["parameters"] == first.parameters
+    assert follow_up.conversation_id == first.conversation_id
+    assert follow_up.state == "answer" and follow_up.parameters == query["parameters"]
+    assert follow_up.retrieved_records[0]["nightly_rate_cents"] == 12500
+    assert "$125.00" in follow_up.answer and "$120.00" not in follow_up.answer
+    assert "2026-10-11" in follow_up.answer and "02108" in follow_up.answer
+    assert "simulated classroom data" in follow_up.answer
+    assert len(calls) == 4 and KEY not in json.dumps(calls)
+
+
+def test_isolated_room_cost_question_requests_context_not_rejected_sql(database, monkeypatch):
+    calls = []
+
+    def provider(request):
+        calls.append(json.loads(request.content))
+        return model_response({"sql": None, "parameters": [], "stay": None})
+
+    async def ask():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(provider)) as client:
+            controller = HotelChatController(database, ChatController(client=client, api_key=KEY))
+            return await controller.ask(HotelChatRequest(question="how much is the room cost?"))
+
+    monkeypatch.setattr(database, "retrieve_hotel_records", lambda _: pytest.fail("Clarification must not query hotels"))
+    response = asyncio.run(ask())
+    assert response.state == "insufficient_data"
+    assert "hotel" in response.answer.lower() and "date" in response.answer.lower()
+    assert response.proposed_sql == response.executed_sql == ""
+    assert response.parameters == response.retrieved_records == []
+    assert not calls
+    history = database.get_chat_history(response.conversation_id)
+    assert [event.stage for event in history.events] == ["user", "assistant"]
+    assert history.events[-1].content["answer"] == response.answer
+
+
+def test_actual_ambiguous_cost_proposal_still_rejected(database):
+    with pytest.raises(RejectedHotelSql):
+        database.retrieve_hotel_records(SqlProposal(sql=AMBIGUOUS_COST_SQL, parameters=[]))
+
+
+def test_model_can_request_clarification_without_sql_or_a_second_call(database, route, monkeypatch):
+    invoke, calls = route
+    monkeypatch.setattr(database, "retrieve_hotel_records", lambda _: pytest.fail("No SQL may run"))
+    response = invoke(query=SqlClarification(sql=None, parameters=[], stay=None),
+                      payload={"question": "How about that stay?"})
+    assert response.status_code == 200 and response.json()["state"] == "insufficient_data"
+    assert response.json()["retrieved_records"] == [] and response.json()["executed_sql"] == ""
+    assert len(calls) == 1 and calls[0]["text"]["format"]["schema"]["properties"]["sql"]["type"] == ["string", "null"]
+
+
+def test_identity_only_history_does_not_supply_an_invented_night_or_rate(database, route):
+    invoke, _ = route
+    first = invoke(query=SqlProposal(sql="SELECT hotel_id, name FROM saved_hotels WHERE hotel_id = ?",
+                                     parameters=["fixture-alpha"]),
+                   second=model_response({"answer": "Fixture Alpha Hotel.", "hotel_ids": ["fixture-alpha"]}),
+                   payload={"question": "Show the name of fixture-alpha."})
+    from uuid import UUID
+    controller = HotelChatController(database, ChatController(api_key=""))
+    response = asyncio.run(controller.ask(HotelChatRequest(
+        question="how much is the room cost?", conversation_id=UUID(first.json()["conversation_id"]))))
+    assert response.state == "insufficient_data" and response.retrieved_records == []
+    assert "$" not in response.answer and "dates" in response.answer
+
+
+@pytest.mark.parametrize("wrong_date", [False, True])
+def test_contextual_price_cannot_use_unrelated_nights_or_model_invented_amounts(database, route, wrong_date):
+    invoke, _ = route
+    first = invoke(query=SqlProposal(sql=NIGHT_SQL, parameters=["02108", "fixture-alpha", "2026-10-11"]),
+                   second=model_response({"answer": "Fixture Alpha Hotel: $120.00.", "hotel_ids": ["fixture-alpha"]}),
+                   payload={"question": "Find fixture-alpha in ZIP 02108 for 2026-10-11."})
+    from uuid import UUID
+    sequence = [
+        {"sql": NIGHT_SQL, "parameters": ["02108", "fixture-alpha", "2026-10-12" if wrong_date else "2026-10-11"], "stay": None},
+        {"answer": "Fixture Alpha Hotel is $999.99.", "hotel_ids": ["fixture-alpha"]},
+    ]
+    async def follow_up():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _: model_response(sequence.pop(0)))) as client:
+            controller = HotelChatController(database, ChatController(client=client, api_key=KEY))
+            return await controller.ask(HotelChatRequest(question="how much is the room cost?",
+                                                        conversation_id=UUID(first.json()["conversation_id"])))
+    response = asyncio.run(follow_up())
+    assert "$999.99" not in response.answer
+    assert response.state == ("insufficient_data" if wrong_date else "answer")
+    if wrong_date:
+        assert "specify" in response.answer and len(sequence) == 1
+    else:
+        assert "$120.00" in response.answer and not sequence
+
+
+def test_failed_sql_is_excluded_from_bounded_completed_context(database, route):
+    invoke, _ = route
+    first = invoke()
+    from uuid import UUID, uuid4
+    conversation_id, failed_turn = UUID(first.json()["conversation_id"]), uuid4()
+    for stage, content in [("user", {"question": "Delete hotels"}),
+                           ("proposed_sql", {"sql": "DELETE FROM saved_hotels", "parameters": [], "stay": None}),
+                           ("retrieval_error", {"code": "rejected_sql"})]:
+        database.append_chat_event(ChatEventWrite(conversation_id=conversation_id, turn_id=failed_turn,
+                                                  stage=stage, content=content))
+    context = completed_context(database.get_chat_history(conversation_id))
+    assert len(context) == 1 and context[0]["question"] == first.json()["question"]
+    assert context[0]["stay"] == STAY and "DELETE" not in json.dumps(context)

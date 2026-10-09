@@ -155,3 +155,28 @@ test('invalid local question and malformed successful response never become answ
   await submitHotelQuestion(state, '')
   assert.equal(state.turns[0].state, 'error')
 })
+
+test('a room-cost clarification displays as insufficient data and survives history reload', async t => {
+  const clarification = { ...answer, question: 'how much is the room cost?', state: 'insufficient_data',
+    proposed_sql: '', executed_sql: '', parameters: [], retrieved_records: [],
+    answer: 'More information is needed. Please specify the saved hotel or ZIP and the night or stay dates.' }
+  t.mock.method(globalThis, 'fetch', async (url, options) => options.method === 'POST'
+    ? Response.json(clarification)
+    : Response.json({ conversation: { conversation_id: id }, events: [
+      { turn_id: 'context-needed', stage: 'user', content: { question: clarification.question } },
+      { turn_id: 'context-needed', stage: 'assistant', content: clarification },
+    ] }))
+  const local = storage()
+  const state = createHotelChatState()
+  state.question = clarification.question
+  await submitHotelQuestion(state, 'http://backend', { storage: local })
+  assert.equal(state.error, '')
+  assert.equal(state.turns[0].state, 'insufficient_data')
+  const refreshed = createHotelChatState()
+  await restoreHotelConversation(refreshed, 'http://backend', { storage: local })
+  const html = await renderHotel(refreshed)
+  assert.match(html, /Insufficient data/)
+  assert.match(html, /More information is needed/)
+  assert.doesNotMatch(html, /query was rejected|could not be verified/)
+  assert.deepEqual(refreshed.turns[0].trace.retrieved_records, [])
+})

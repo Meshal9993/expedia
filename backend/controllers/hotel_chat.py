@@ -8,26 +8,27 @@ from datetime import date, timedelta
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from backend.controllers.chat import ChatConfigurationError, ChatController, ChatModelError
 from backend.controllers.database import DatabaseController
 from backend.controllers.hotel_sql import HotelRetrievalError, RejectedHotelSql
 from backend.models.hotel_chat import (
     ChatEventWrite, ChatHistory, ChatPromptMetadata, HotelChatRequest, HotelChatResponse,
-    SqlProposal, StayAssessment,
+    SqlClarification, SqlProposal, StayAssessment,
 )
 
 
 PROMPT_PATH = Path(__file__).resolve().parents[2] / "prompts" / "hotel-assistant.md"
-PROMPT_VERSION = "hotel-assistant-v1"
+PROMPT_VERSION = "hotel-assistant-v2"
+SQL_PLAN = TypeAdapter(SqlProposal | SqlClarification)
 SIMULATED = "Rates and room availability are simulated classroom data, not live hotel information."
 SQL_FORMAT = {
     "type": "json_schema", "name": "hotel_sql", "strict": True,
     "schema": {
         "type": "object", "additionalProperties": False,
         "properties": {
-            "sql": {"type": "string"},
+            "sql": {"type": ["string", "null"]},
             "parameters": {"type": "array", "items": {"anyOf": [
                 {"type": "string"}, {"type": "number"}, {"type": "null"},
             ]}},
@@ -58,6 +59,58 @@ class HotelChatError(Exception):
     def __init__(self, code, status, detail, conversation_id=None):
         self.code, self.status, self.detail = code, status, detail
         self.conversation_id = conversation_id
+
+
+def completed_context(history: ChatHistory | None) -> list[dict]:
+    """Bounded completed turns only; failed proposals are never usable context."""
+    if history is None:
+        return []
+    proposals = {event.turn_id: event.content for event in history.events if event.stage == "proposed_sql"}
+    context, size = [], 0
+    for event in reversed(history.events):
+        if event.stage != "assistant":
+            continue
+        turn = {key: event.content.get(key) for key in (
+            "question", "answer", "state", "proposed_sql", "parameters", "retrieved_records", "truncated",
+        )}
+        turn["stay"] = proposals.get(event.turn_id, {}).get("stay")
+        size += len(json.dumps(turn, ensure_ascii=False).encode())
+        if size > 65536 or len(context) == 6:
+            break
+        context.append(turn)
+    return list(reversed(context))
+
+
+def implicit_room_cost(question: str) -> bool:
+    """A bare price follow-up supplies no hotel, ZIP, or date of its own."""
+    words = set(re.findall(r"[a-z0-9]+", question.lower()))
+    generic = set("how much what is are does would will be the a an it its this that these those "
+                  "room rooms hotel hotels cost costs price prices rate rates nightly night per for of please".split())
+    return bool(words and words <= generic and (words & {"cost", "costs", "price", "prices", "rate", "rates"}
+                                                or {"how", "much"} <= words))
+
+
+def pricing_context(context: list[dict]) -> list[dict]:
+    """Reuse known hotel/date identities, never prices as current evidence."""
+    subject_ids = None
+    for turn in reversed(context):
+        rows = turn["retrieved_records"] or []
+        if turn["state"] == "no_matches":
+            return []
+        if not rows:
+            continue
+        ids = {row.get("hotel_id") for row in rows}
+        if subject_ids is None:
+            subject_ids = ids
+        if not subject_ids <= ids:
+            return []
+        dated = [row for row in rows if row.get("hotel_id") in subject_ids
+                 and isinstance(row.get("stay_date"), str)
+                 and re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", row["stay_date"])
+                 and type(row.get("nightly_rate_cents")) is int and row["nightly_rate_cents"] >= 0]
+        if dated and turn["state"] == "answer" and not turn["truncated"]:
+            return dated
+    return []
 
 
 def assess_stay(proposal: SqlProposal, records: list[dict]) -> list[StayAssessment]:
@@ -112,9 +165,9 @@ class HotelChatController:
             raise HotelChatError("invalid", 422, "Do not include credentials in a hotel question.")
         prompt_hash = hashlib.sha256(prompt.encode()).hexdigest()
         try:
-            conversation = (self.history(request.conversation_id).conversation if request.conversation_id
-                            else self.database.create_chat_conversation(
-                                ChatPromptMetadata(prompt_hash=prompt_hash, prompt_version=PROMPT_VERSION)))
+            history = self.history(request.conversation_id) if request.conversation_id else None
+            conversation = (history.conversation if history else self.database.create_chat_conversation(
+                ChatPromptMetadata(prompt_hash=prompt_hash, prompt_version=PROMPT_VERSION)))
         except sqlite3.Error:
             raise HotelChatError("history_failed", 503, "Conversation history is unavailable.") from None
         conversation_id = conversation.conversation_id
@@ -133,12 +186,32 @@ class HotelChatController:
 
         record("user", {"question": request.question, "prompt_hash": prompt_hash,
                         "prompt_version": PROMPT_VERSION, "model": self.model.model})
+
+        def clarify():
+            response = HotelChatResponse(
+                conversation_id=conversation_id, question=request.question, proposed_sql="", executed_sql="",
+                parameters=[], retrieved_records=[], state="insufficient_data",
+                answer="More information is needed. Please specify the saved hotel or ZIP and the night or stay dates."
+                       "\n\n" + SIMULATED,
+            )
+            record("assistant", response.model_dump(mode="json"))
+            return response
+
+        context = completed_context(history)
+        cost_follow_up = implicit_room_cost(request.question)
+        known_nights = pricing_context(context) if cost_follow_up else []
+        if cost_follow_up and not known_nights:
+            return clarify()
         try:
             raw = await self.model.request_output(
-                prompt + "\nStage 1: propose SQL and parameters, never an answer. Stay dates must come from the question.",
-                json.dumps({"question": request.question}), SQL_FORMAT,
+                prompt + "\nStage 1: propose SQL and parameters, never an answer. Resolve follow-ups only from"
+                " the question and completed conversation context. Return sql=null, parameters=[], stay=null"
+                " when hotel/date context is missing or ambiguous. Never guess filter values.",
+                json.dumps({"question": request.question, "conversation_context": context}, ensure_ascii=False), SQL_FORMAT,
             )
-            proposal = SqlProposal.model_validate_json(raw)
+            proposal = SQL_PLAN.validate_json(raw)
+            if isinstance(proposal, SqlClarification):
+                return clarify()
             # Explicit ISO stay boundaries in the question cannot silently be changed/omitted.
             dates = re.findall(r"\b\d{4}-\d{2}-\d{2}\b", request.question)
             range_question = re.search(r"\b(from|to|through|until|stay|between|checkout|checkin)\b", request.question, re.I)
@@ -169,8 +242,33 @@ class HotelChatController:
         assessments = assess_stay(proposal, retrieval.records)
         state = ("insufficient_data" if retrieval.truncated else "no_matches" if not retrieval.records
                  else "insufficient_data" if any(item.missing_dates for item in assessments) else "answer")
+        if cost_follow_up and retrieval.records:
+            known = {(row["hotel_id"], row["stay_date"]) for row in known_nights}
+            current = {(row.get("hotel_id"), row.get("stay_date")) for row in retrieval.records}
+            zip_scope = {row["requested_zip"] for row in known_nights if row.get("requested_zip")}
+            wrong_zip = zip_scope and any(row.get("requested_zip") not in zip_scope for row in retrieval.records)
+            missing_rates = any(type(row.get("nightly_rate_cents")) is not int
+                                or row["nightly_rate_cents"] < 0 for row in retrieval.records)
+            if current != known or wrong_zip or missing_rates:
+                state = "insufficient_data"
         record("retrieval_result", {"records": retrieval.records, "truncated": retrieval.truncated,
                                     "stay_assessments": [item.model_dump() for item in assessments], "state": state})
+
+        def finish(answer):
+            if retrieval.truncated:
+                answer += "\nThe retrieval reached its row or output-size limit; evidence is incomplete."
+            response = HotelChatResponse(
+                conversation_id=conversation_id, question=request.question, proposed_sql=proposal.sql,
+                executed_sql=retrieval.executed_sql, parameters=proposal.parameters,
+                retrieved_records=retrieval.records, answer=answer + "\n\n" + SIMULATED, state=state,
+                truncated=retrieval.truncated, stay_assessments=assessments,
+            )
+            record("assistant", response.model_dump(mode="json"))
+            return response
+
+        if cost_follow_up and state == "insufficient_data":
+            return finish("The query did not retrieve complete dated rates for the hotels in context. "
+                          "Please specify the saved hotel or ZIP and the night or stay dates.")
         evidence = {
             "question": request.question, "query_context": proposal.model_dump(mode="json"),
             "retrieved_records": retrieval.records, "state": state, "truncated": retrieval.truncated,
@@ -201,6 +299,14 @@ class HotelChatController:
             answer = "No complete hotel record fit within the retrieval output limit. There is insufficient evidence to answer."
         elif state == "no_matches":
             answer = "No matching saved hotel records were retrieved. This does not establish real hotel availability."
+        elif cost_follow_up:
+            lines = []
+            for row in retrieval.records:
+                cents = row["nightly_rate_cents"]
+                zip_label = f", ZIP {row['requested_zip']}" if row.get("requested_zip") else ""
+                lines.append(f"{row.get('name') or 'Name unavailable'} ({row['hotel_id']}){zip_label}, "
+                             f"{row['stay_date']}: ${cents // 100}.{cents % 100:02d} per room per night.")
+            answer = "\n".join(dict.fromkeys(lines))
         elif proposal.stay:
             # Model prose cannot overrule checked nightly coverage or arithmetic.
             lines = []
@@ -218,14 +324,4 @@ class HotelChatController:
                     lines.append(f"{label}: {len(item.required_dates)} nights; per-room demo total "
                                  f"${cents // 100}.{cents % 100:02d}. {rooms}")
             answer = "\n".join(lines)
-        if retrieval.truncated:
-            answer += "\nThe retrieval reached its row or output-size limit; evidence is incomplete."
-        answer += "\n\n" + SIMULATED
-        response = HotelChatResponse(
-            conversation_id=conversation_id, question=request.question, proposed_sql=proposal.sql,
-            executed_sql=retrieval.executed_sql, parameters=proposal.parameters,
-            retrieved_records=retrieval.records, answer=answer, state=state,
-            truncated=retrieval.truncated, stay_assessments=assessments,
-        )
-        record("assistant", response.model_dump(mode="json"))
-        return response
+        return finish(answer)

@@ -54,6 +54,14 @@ class SqlProposal(BaseModel):
         return values
 
 
+class SqlClarification(BaseModel):
+    """No-query decision; this is never passed to SQLite or the SQL validator."""
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    sql: None
+    parameters: list = Field(max_length=0)
+    stay: None
+
+
 class HotelRetrieval(BaseModel):
     model_config = ConfigDict(frozen=True)
     executed_sql: str
