@@ -2,7 +2,7 @@
 
 This repository is an Expedia-style travel application. It keeps the FastAPI backend and Vue frontend separate while preserving the instructor-supplied CSV data as read-only source data.
 
-Repository: [Meshal9993/expedia](https://github.com/Meshal9993/expedia). The [Assignment 2 Part 1 report](report.md) assesses implementation commit `85d0ac345a451267742c456a3d1ee70e524e3f72`. The report was published separately in `49962a4f0b4d4d368233cfa851f65d470b2881b8`.
+Repository: [Meshal9993/expedia](https://github.com/Meshal9993/expedia). The [Assignment 2 Part 1 report](https://github.com/Meshal9993/expedia/blob/ad55cdb1613bd67139995128fc9b5719c5277d4a/report.md) remains available in the published Part 1 history. The current [report](report.md) covers Assignment 2 Part 2. Its [demo video](docs/screenshots/assignment2-part2-demo.mov) uses Git LFS; Git LFS is needed to download the full video when cloning.
 
 ## Project layout
 
@@ -137,7 +137,7 @@ The Saved hotel assistant calls `POST /api/hotel-chat`. OpenAI first proposes SQ
 
 Repeatable initialization adds conversation/event tables without reseeding existing course records. SQLite saves the trace; browser storage keeps only a conversation ID, restored through `GET /api/hotel-chat/{conversation_id}`. New conversation retains old backend history. `prompts/hotel-assistant.md` is read per request and hashed in the trace. Restart the backend after Python changes; restart Vue after changing its startup environment.
 
-No new packages are needed and no live OpenAI RAG request has been made. See [contracts](docs/chat-contract.md), [the fixed fictional fixture](docs/assignment2-part2-rag-fixture.json), and [mocked context](docs/assignment2-part2-rag-context.md). Run all frontend tests with `node --test frontend/tests/*.test.js` and backend checks with `backend/.venv/bin/python -m pytest backend/tests`.
+No new packages are needed. Live verification is recorded in the [Part 2 report](report.md) and [RAG verification notes](docs/assignment2-part2-rag-context.md), separate from mocked safety checks. See [contracts](docs/chat-contract.md) and [the fixed fictional fixture](docs/assignment2-part2-rag-fixture.json). Run all frontend tests with `node --test frontend/tests/*.test.js` and backend checks with `backend/.venv/bin/python -m pytest backend/tests`.
 
 ## Assignment 2, Part 1 evidence
 

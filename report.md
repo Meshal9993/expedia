@@ -1,96 +1,65 @@
-# Assignment 2 Part 1
+# Expedia Lite — Part 2
 
-## Project access
+## Repository and commit
 
-Repository: [Meshal9993/expedia](https://github.com/Meshal9993/expedia)
+Repository: https://github.com/Meshal9993/expedia
 
-commit: 447909ac421fbb0177211de9917a355ada46f2b7.
-
-Local frontend: [http://127.0.0.1:5173/](http://127.0.0.1:5173/)
-
-Local backend: [http://127.0.0.1:8000](http://127.0.0.1:8000)
-
-The Geoapify API key is stored in ignored, untracked `backend/.env` and stays in the backend. These local URLs require the project servers to be running.
-
-## Research notes
-
-Before starting the implementation, I checked the Geoapify and Leaflet documentation.
-
-Sources:
-
-- https://apidocs.geoapify.com/docs/geocoding/forward-geocoding/
-- https://apidocs.geoapify.com/docs/places/
-- https://leafletjs.com/reference.html
-- https://www.geoapify.com/pricing/
-
-
-The API key is kept in the backend and is not exposed in the frontend.
-
-
-
-## Early mockup
-
-Before coding, I created a simple mockup showing the main parts of the page:
-
-- ZIP code input
-- Search button
-- hotel list
-- map
-- different messages for loading and errors
-
-Mockup:
-https://github.com/Meshal9993/expedia/blob/main/docs/assignment2-part1-mockup.md
-
+Part 2 implementation commit: f189c879a50668316b088888069be3848b111772
 
 ## Implementation
 
-The user enters a five-digit U.S. ZIP code stored as text, so leading zeros are preserved.
+Part 2 keeps the live ZIP hotel search and map from Part 1 and adds local saved hotel data and a RAG hotel assistant.
 
-The backend uses Geoapify to find the ZIP code location and search for nearby hotels within 5 km.
+The Vue frontend lets the user search for hotels, save a hotel locally, see simulated nightly rates and room availability, and ask questions in the hotel assistant.
 
-The frontend displays the results in a hotel list and a Leaflet map.
+FastAPI connects the frontend to the backend. For hotel questions, the first LLM request creates a SQL query and parameters. The backend checks that the query is read-only, then SQLite returns the saved hotel records. A second LLM request uses those records to make the final answer.
 
-Selecting a hotel from the list selects the same hotel on the map. Selecting a marker on the map also selects the hotel in the list.
-
-The application handles invalid ZIP codes, missing locations, no results, API errors, and rate limits.
-
-
-## Demo video
-
-Video:
-https://github.com/Meshal9993/expedia/blob/main/docs/screenshots/Screen%20Recording%202026-09-30%20at%207.14.18%E2%80%AFPM.mov
+The chatbot also shows a RAG Trace with the SQL, parameters, and retrieved records. Conversation history is saved in SQLite and stays after a page refresh.
 
 
 ## Verification
 
-I tested the application:
+I tested the app in the browser using ZIP 16801.
 
-For ZIP code 16801, the search returned State College and 15 hotel results during my test.
+The saved hotel was Courtyard by Marriott State College
 
-For ZIP code 02108, the leading zero was preserved and the search returned Boston with 20 results during my test.
+I asked:
 
-I also tested:
+Any saved hotels in ZIP 16801 on 2026-10-14?
 
-- list to map selection
-- map to list selection
-- invalid ZIP (1234)
-- no results
-- API failure
-- rate limit
+Expected: The assistant should use the saved local records and return the matching hotel.
 
-Final verification on September 30, 2026 passed: frontend lint, frontend production build, and all 40 backend tests. 
+Observed: The assistant returned the saved hotel using the SQLite records. The RAG Trace showed the proposed SQL, parameters, and retrieved records.
 
-Empty results, unresolved ZIPs, API failure, and rate limits were checked with mocks, without deliberately exhausting the live service. The final browser pass repeated the live searches, selection, and invalid-input checks; earlier browser failure checks were not repeated.
+I also asked:
 
-The original Assignment 1 search for Harbor Lantern Hotel returned Boston Harbor Weekend and Boston Autumn Weekend. Booking history also loaded.
+How much is Courtyard by Marriott State College on 2026-10-14?
 
+Expected: The assistant should return the saved simulated nightly rate.
 
-## AI disclosure and evidence log
+Observed: The assistant returned the rate from the saved data.
 
-I used Codex for coding, testing, and reviewing the project.
+For a no match test, I asked:
 
-I also used the Codex Annotate/comment feature to select specific parts of the interface and give feedback.
+Any saved hotels in ZIP 11111 on 2026-10-11?
 
-The full evidence log is available here:
+Expected: No matching saved hotel should be returned.
 
-https://github.com/Meshal9993/expedia/blob/main/docs/assignment2-part1-evidence.md
+Demo video: [Assignment 2 Part 2 Demo](docs/screenshots/assignment2-part2-demo.mov)
+
+## Project context and next steps
+
+Project files:
+
+- [README](README.md)
+- [AGENTS](AGENTS.md)
+- [Design note](docs/design-note.md)
+- [RAG research](docs/assignment2-part2-research.md)
+- [Early mockup](docs/assignment2-part2-mockup.md)
+- [RAG verification notes](docs/assignment2-part2-rag-context.md)
+- [Hotel assistant prompt](prompts/hotel-assistant.md)
+- [Current handoff](handoffs/current.md)
+
+One limitation is that the hotel prices and room counts are test data and not real hotel information.
+
+The main Part 2 work is complete.

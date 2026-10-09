@@ -1,6 +1,14 @@
 # Current handoff
 
-## Assignment 2, Part 2: revised OpenAI RAG implementation
+## Assignment 2, Part 2: submission prepared
+
+October 8, 2026, on `rag_integration`. The completed implementation includes saved hotel storage, the floating RAG chatbot, persistent trace/history, and contextual follow-ups. The final source checkpoint is `f189c879a50668316b088888069be3848b111772`. The [Part 2 report](../report.md) and [demo video](../docs/screenshots/assignment2-part2-demo.mov) are prepared for submission; the original Part 1 report remains in published Git history.
+
+The saved live conversation trace confirms the Courtyard by Marriott State College price question for `2026-10-14` and the no-match ZIP `11111`. Submission preparation made no new OpenAI requests and did not change hotel records or UI styling. The report keeps the student's wording and describes rates/rooms as simulated values.
+
+Final checks: 166 backend tests, 25 frontend tests, frontend lint/build, and `git diff --check` passed. Secrets and local SQLite files remain ignored and untracked. The 176 MB MOV uses the existing Git LFS capability with a file-specific attribute; no package installation was needed. Commits stay local on `rag_integration`; do not push or merge until separately authorized. `origin/main` remains at `ad55cdb1613bd67139995128fc9b5719c5277d4a`.
+
+## Assignment 2, Part 2: revised OpenAI RAG implementation checkpoint
 
 October 8, 2026, on `rag_integration`, based on basic chatbot checkpoint `4447dd72ff975cd9cfd525448969999fe52363aa`. The class foundation is OpenAI; no OpenRouter replacement or new dependency was added. Basic `/api/chat`, Assignment 1, and Part 1/local-storage APIs remain intact.
 
@@ -20,7 +28,7 @@ The October 6 basic live request returned `credit_balance_exhausted`; no real re
 
 ## Assignment 2, Part 1: complete and published
 
-Final evidence verification: **September 30, 2026**, on `feature/assignment2-part1-live-hotels`. The assessed implementation commit is `85d0ac345a451267742c456a3d1ee70e524e3f72`, merged into `main` and pushed on both branches to [Meshal9993/expedia](https://github.com/Meshal9993/expedia). The [final report](../report.md) was added and pushed to `main` in the separate report-only commit `49962a4f0b4d4d368233cfa851f65d470b2881b8`. Local URLs are frontend `http://127.0.0.1:5173/` and backend `http://127.0.0.1:8000`.
+Final evidence verification: **September 30, 2026**, on `feature/assignment2-part1-live-hotels`. The assessed implementation commit is `85d0ac345a451267742c456a3d1ee70e524e3f72`, merged into `main` and pushed on both branches to [Meshal9993/expedia](https://github.com/Meshal9993/expedia). The [Part 1 report](https://github.com/Meshal9993/expedia/blob/ad55cdb1613bd67139995128fc9b5719c5277d4a/report.md) was added and pushed to `main` in the separate report-only commit `49962a4f0b4d4d368233cfa851f65d470b2881b8`. Local URLs are frontend `http://127.0.0.1:5173/` and backend `http://127.0.0.1:8000`.
 
 - FastAPI provides `GET /api/live-hotels?zip=<five-digit ZIP>`. `backend/controllers/location.py` validates the ZIP, confirms the matching U.S. postcode, requests Geoapify hotel places within 5,000 meters (limit 20), and maps only provider-backed fields to separate DTOs.
 - `frontend/src/components/LiveHotelSearch.vue` owns the ZIP string, HTTP request, feedback states, results, and shared `selectedHotelId`. `HotelMap.vue` owns Leaflet rendering and lifecycle. List and marker selection stay synchronized.

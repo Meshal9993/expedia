@@ -27,7 +27,7 @@ The backend calls OpenAI `/v1/responses` with the supplied model, default servic
 
 The [model documentation](https://developers.openai.com/api/docs/models/gpt-5.6-luna) and [Responses streaming guide](https://developers.openai.com/api/docs/guides/streaming-responses) informed the request. The reference sample's optional stored reasoning and web-search source fields are unnecessary for this plain-text connection.
 
-Mocked checks cover history, text/refusal streaming, malformed/interrupted replies, invalid input, missing configuration, authentication/service failure, quota/rate limits, and credential-safe errors. The October 6 basic live request returned `credit_balance_exhausted`, with no real reply. This is historical evidence, not a new account-status check. No live hotel RAG request has been made.
+Mocked checks cover history, text/refusal streaming, malformed/interrupted replies, invalid input, missing configuration, authentication/service failure, quota/rate limits, and credential-safe errors. The October 6 basic live request returned `credit_balance_exhausted`, with no real reply. This is historical evidence, not a new account-status check. Later live hotel RAG verification is documented in the [Part 2 report](../report.md) and [verification notes](assignment2-part2-rag-context.md).
 
 ## Hotel RAG contract
 
